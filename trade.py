@@ -31,6 +31,6 @@ def get_orders():
     return json.loads(r.content)
 
 
-orders = get_orders()
+#orders = get_orders()
 
-print(orders)
+#print(orders)
