@@ -1,4 +1,8 @@
 import requests , json
+
+#Helper Functions and filepaths
+import alpaca_trade_api as tradeapi #addded line
+import computations.market_health as market_health #added line
 from config import *
 
 BASE_URL = "https://paper-api.alpaca.markets"
@@ -36,5 +40,8 @@ def main():
     orders = get_orders()
     #print ("test")
     print(orders)
+
+    print ("New TEST: \n\n\n")
+    market_health.get_Market_health(tradeapi)
 
 main()
