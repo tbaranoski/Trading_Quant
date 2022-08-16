@@ -1,2 +1,1 @@
-
-    return json.loads(r.content)
+get_Market_health(tradeapi)

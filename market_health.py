@@ -9,7 +9,9 @@
 
 ##Distribution Day: A day where market index drops by more than .2% with greater volume than the day before. Indicates Institutional selling AKA Distribution.
 ##########################################################################################################################################################
-import alpaca_trade_api as tradeapi
+#import alpaca_trade_api as tradeapi
+from alpaca_trade_api.rest import REST, TimeFrame
+#api_test = REST()
 #import alpaca_trad_api #delete
 
 #Constants
@@ -48,23 +50,23 @@ def get_Distribution_DAY_COUNT(NUM_DAYS, TICKER_D_BARS):
 #Main function in file
 def get_Market_health(api):
     #MAIN()
-    SPY_D_BARSET_LONG = tradeapi.rest.get_barset('SPY', 'day', limit = LONG_DISTRIBUTION)
-    SPY_D_BARS_LONG = SPY_D_BARSET_LONG['SPY']
+    SPY_D_BARSET_LONG = api.get_bars('SPY', TimeFrame.Day, limit = LONG_DISTRIBUTION)
+    #SPY_D_BARS_LONG = SPY_D_BARSET_LONG['SPY']
 
-    SPY_D_BARSET_SHORT = api.get_barset('SPY', 'day', limit = SHORT_DISTRIBUTION)
-    SPY_D_BARS_SHORT = SPY_D_BARSET_SHORT['SPY']
+    SPY_D_BARSET_SHORT = api.get_bars('SPY', TimeFrame.Day, limit = SHORT_DISTRIBUTION)
+    #SPY_D_BARS_SHORT = SPY_D_BARSET_SHORT['SPY']
 
-    QQQ_D_BARSET_LONG = api.get_barset('QQQ', 'day', limit = LONG_DISTRIBUTION)
-    QQQ_D_BARS_LONG = QQQ_D_BARSET_LONG['QQQ']
+    QQQ_D_BARSET_LONG = api.get_bars('QQQ', TimeFrame.Day, limit = LONG_DISTRIBUTION)
+    #QQQ_D_BARS_LONG = QQQ_D_BARSET_LONG['QQQ']
 
-    QQQ_D_BARSET_SHORT = api.get_barset('QQQ', 'day', limit = SHORT_DISTRIBUTION)
-    QQQ_D_BARS_SHORT = QQQ_D_BARSET_SHORT['QQQ']
+    QQQ_D_BARSET_SHORT = api.get_bars('QQQ', TimeFrame.Day, limit = SHORT_DISTRIBUTION)
+    #QQQ_D_BARS_SHORT = QQQ_D_BARSET_SHORT['QQQ']
 
 
     #Calculate distribution days
-    SPY_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION, SPY_D_BARS_LONG)
-    SPY_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION, SPY_D_BARS_SHORT)
-    QQQ_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION, QQQ_D_BARS_LONG)
-    QQQ_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION, QQQ_D_BARS_SHORT)
+    #SPY_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION, SPY_D_BARS_LONG)
+    #SPY_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION, SPY_D_BARS_SHORT)
+    #QQQ_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION, QQQ_D_BARS_LONG)
+    #QQQ_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION, QQQ_D_BARS_SHORT)
 
-    print("test print: ", QQQ_DIST_LONG)
+    #print("test print: ", QQQ_DIST_LONG)

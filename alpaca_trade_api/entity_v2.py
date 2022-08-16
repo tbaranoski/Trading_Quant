@@ -61,6 +61,40 @@ luld_mapping_v2 = {
     "z": "tape"
 }
 
+cancel_error_mapping_v2 = {
+    "S": "symbol",
+    "i": "id",
+    "x": "exchange",
+    "p": "price",
+    "s": "size",
+    "a": "cancel_error_action",
+    "z": "tape",
+    "t": "timestamp",
+}
+
+correction_mapping_v2 = {
+    "S": "symbol",
+    "x": "exchange",
+    "oi": "original_id",
+    "op": "original_price",
+    "os": "original_size",
+    "oc": "original_conditions",
+    "ci": "corrected_id",
+    "cp": "corrected_price",
+    "cs": "corrected_size",
+    "cc": "corrected_conditions",
+    "z": "tape",
+    "t": "timestamp",
+}
+
+orderbook_mapping_v2 = {
+    "S": "symbol",
+    "x": "exchange",
+    "t": "timestamp",
+    "b": "bids",
+    "a": "asks",
+}
+
 
 class EntityListType(Enum):
     Trade = Trade, trade_mapping_v2
@@ -152,6 +186,20 @@ class LULDV2(Remapped, _NanoTimestamped, Entity):
         super().__init__(luld_mapping_v2, raw)
 
 
+class CancelErrorV2(Remapped, _NanoTimestamped, Entity):
+    _tskeys = ('t',)
+
+    def __init__(self, raw):
+        super().__init__(cancel_error_mapping_v2, raw)
+
+
+class CorrectionV2(Remapped, _NanoTimestamped, Entity):
+    _tskeys = ('t',)
+
+    def __init__(self, raw):
+        super().__init__(correction_mapping_v2, raw)
+
+
 class SnapshotV2:
     def __init__(self, raw):
         self.latest_trade = _convert_or_none(TradeV2, raw.get('latestTrade'))
@@ -165,6 +213,50 @@ class SnapshotsV2(dict):
     def __init__(self, raw):
         for k, v in raw.items():
             self[k] = _convert_or_none(SnapshotV2, v)
+
+
+class LatestBarsV2(dict):
+    def __init__(self, raw):
+        for k, v in raw.items():
+            self[k] = _convert_or_none(BarV2, v)
+
+
+class LatestTradesV2(dict):
+    def __init__(self, raw):
+        for k, v in raw.items():
+            self[k] = _convert_or_none(TradeV2, v)
+
+
+class LatestQuotesV2(dict):
+    def __init__(self, raw):
+        for k, v in raw.items():
+            self[k] = _convert_or_none(QuoteV2, v)
+
+
+class BidOrAsk(Entity):
+    def __init__(self, raw):
+        super().__init__(raw)
+
+
+class OrderbookV2(Entity):
+    def __init__(self, raw):
+        super().__init__(raw)
+        if self.bids:
+            for i in range(len(self.bids)):
+                self.bids[i] = BidOrAsk(self.bids[i])
+        if self.asks:
+            for i in range(len(self.asks)):
+                self.asks[i] = BidOrAsk(self.asks[i])
+
+
+class NewsV2(Entity):
+    def __init__(self, raw):
+        super().__init__(raw)
+
+
+class NewsListV2(list):
+    def __init__(self, raw):
+        super().__init__([NewsV2(o) for o in raw])
 
 
 def _convert_or_none(entityType, value):

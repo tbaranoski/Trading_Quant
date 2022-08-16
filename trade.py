@@ -1,8 +1,13 @@
+#https://forum.alpaca.markets/t/get-bars-vs-get-barset/8127/6 -----Reference for get_bars
+
+from sys import api_version
 import requests , json
 
 #Helper Functions and filepaths
 import alpaca_trade_api as tradeapi #addded line
-import computations.market_health as market_health #added line
+#import computations.market_health as market_health #added line
+#from market_health import *
+import market_health
 from config import *
 
 BASE_URL = "https://paper-api.alpaca.markets"
@@ -36,12 +41,19 @@ def get_orders():
 
 
 def main():
-    #print ("test!!!")
-    orders = get_orders()
-    #print ("test")
-    print(orders)
 
-    print ("New TEST: \n\n\n")
-    market_health.get_Market_health(tradeapi)
+    #Creat REST object by pasing API KEYS
+    api = tradeapi.REST(API_KEY, SECRET_KEY, BASE_URL, api_version='v2')
+    #account = api.get_account()
+    #print (account)
+
+
+
+    #print ("test!!!")
+    #orders = get_orders()
+    #print(orders)
+
+    #print ("New TEST: \n\n\n")
+    market_health.get_Market_health(api)
 
 main()

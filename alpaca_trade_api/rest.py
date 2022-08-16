@@ -4,6 +4,8 @@ from typing import Iterator, List, Optional, Union
 import requests
 from requests.exceptions import HTTPError
 import time
+from enum import Enum
+from alpaca_trade_api import __version__
 from .common import (
     get_base_url,
     get_data_url,
@@ -12,12 +14,14 @@ from .common import (
 )
 from .entity import (
     Bar, Entity, Account, AccountConfigurations, AccountActivity,
-    Asset, Order, Position, BarSet, Clock, Calendar,
-    Aggs, Trade, Quote, Watchlist, PortfolioHistory
+    Asset, Order, Position, Clock, Calendar,
+    Trade, Quote, Watchlist, PortfolioHistory
 )
 from .entity_v2 import (
-    BarsV2, SnapshotV2, SnapshotsV2, TradesV2, TradeV2, QuotesV2, QuoteV2)
-from . import polygon
+    BarV2, BarsV2, LatestBarsV2, LatestQuotesV2, LatestTradesV2,
+    SnapshotV2, SnapshotsV2, TradesV2, TradeV2, QuotesV2, QuoteV2,
+    NewsV2, NewsListV2
+)
 
 logger = logging.getLogger(__name__)
 Positions = List[Position]
@@ -29,8 +33,10 @@ Watchlists = List[Watchlist]
 TradeIterator = Iterator[Union[Trade, dict]]
 QuoteIterator = Iterator[Union[Quote, dict]]
 BarIterator = Iterator[Union[Bar, dict]]
+NewsIterator = Iterator[Union[NewsV2, dict]]
 
 DATA_V2_MAX_LIMIT = 10000  # max items per api call
+NEWS_MAX_LIMIT = 50  # max items per api call
 
 
 class RetryException(Exception):
@@ -69,11 +75,81 @@ class APIError(Exception):
             return self._http_error.response
 
 
-class TimeFrame(str):
-    Day = "1Day"
-    Hour = "1Hour"
-    Minute = "1Min"
-    Sec = "1Sec"
+class TimeFrameUnit(Enum):
+    Minute = "Min"
+    Hour = "Hour"
+    Day = "Day"
+    Week = "Week"
+    Month = "Month"
+
+
+class TimeFrame:
+    def __init__(self, amount: int, unit: TimeFrameUnit):
+        self.validate(amount, unit)
+        self.__amount = amount
+        self.__unit = unit
+
+    @property
+    def amount(self):
+        return self.__amount
+
+    @amount.setter
+    def amount(self, value: int):
+        self.validate(value, self.__unit)
+        self.__amount = value
+
+    @property
+    def unit(self) -> TimeFrameUnit:
+        return self.__unit
+
+    @unit.setter
+    def unit(self, value: TimeFrameUnit):
+        self.validate(self.__amount, value)
+        self.__unit = value
+
+    # using "value" field for backwards compatibility
+    @property
+    def value(self):
+        return f"{self.__amount}{self.__unit.value}"
+
+    def __str__(self):
+        return self.value
+
+    @staticmethod
+    def validate(amount: int, unit: TimeFrameUnit):
+        if amount <= 0:
+            raise ValueError("Amount must be a positive integer value.")
+
+        if unit == TimeFrameUnit.Minute and amount > 59:
+            raise ValueError("Second or Minute units can only be " +
+                             "used with amounts between 1-59.")
+
+        if unit == TimeFrameUnit.Hour and amount > 23:
+            raise ValueError("Hour units can only be used with amounts 1-23")
+
+        if unit in (TimeFrameUnit.Day, TimeFrameUnit.Week) and amount != 1:
+            raise ValueError(
+                "Day and Week units can only be used with amount 1")
+
+        if unit == TimeFrameUnit.Month and amount not in (1, 2, 3, 6, 12):
+            raise ValueError(
+                "Month units can only be used with amount 1, 2, 3, 6 and 12")
+
+
+# These are kept for backwards compatibility
+TimeFrame.Minute = TimeFrame(1, TimeFrameUnit.Minute)
+TimeFrame.Hour = TimeFrame(1, TimeFrameUnit.Hour)
+TimeFrame.Day = TimeFrame(1, TimeFrameUnit.Day)
+TimeFrame.Week = TimeFrame(1, TimeFrameUnit.Week)
+TimeFrame.Month = TimeFrame(1, TimeFrameUnit.Month)
+
+
+class Sort(Enum):
+    Asc = "asc"
+    Desc = "desc"
+
+    def __str__(self):
+        return self.value
 
 
 class REST(object):
@@ -99,8 +175,6 @@ class REST(object):
         self._retry_wait = int(os.environ.get('APCA_RETRY_WAIT', 3))
         self._retry_codes = [int(o) for o in os.environ.get(
             'APCA_RETRY_CODES', '429,504').split(',')]
-        self.polygon = polygon.REST(
-            self._key_id, 'staging' in self._base_url, self._use_raw_data)
 
     def _request(self,
                  method,
@@ -117,6 +191,7 @@ class REST(object):
         else:
             headers['APCA-API-KEY-ID'] = self._key_id
             headers['APCA-API-SECRET-KEY'] = self._secret_key
+        headers['User-Agent'] = 'APCA-TRADE-SDK-PY/' + __version__
         opts = {
             'headers':         headers,
             # Since we allow users to set endpoint URL via env var,
@@ -186,8 +261,12 @@ class REST(object):
     def delete(self, path, data=None):
         return self._request('DELETE', path, data)
 
-    def data_get(self, path, data=None, api_version='v1'):
+    def data_get(self, path, data=None,
+                 feed: Optional[str] = None, api_version='v1'):
         base_url: URL = get_data_url()
+        if feed:
+            data = data or {}
+            data['feed'] = feed
         return self._request(
             'GET', path, data, base_url=base_url, api_version=api_version,
         )
@@ -234,7 +313,8 @@ class REST(object):
                     direction: str = None,
                     params=None,
                     nested: bool = None,
-                    symbols: List[str] = None
+                    symbols: List[str] = None,
+                    side: str = None
                     ) -> Orders:
         """
         Get a list of orders
@@ -248,6 +328,7 @@ class REST(object):
         :param params: refer to documentation
         :param nested: should the data be nested like json
         :param symbols: list of str (symbols)
+        :param side: Lets you filter to only 'buy' or 'sell' orders
         """
         if params is None:
             params = dict()
@@ -263,6 +344,8 @@ class REST(object):
             params['status'] = status
         if nested is not None:
             params['nested'] = nested
+        if side is not None:
+            params['side'] = side
         if symbols is not None:
             params['symbols'] = ",".join(symbols)
         url = '/orders'
@@ -466,110 +549,44 @@ class REST(object):
         resp = self.get('/assets/{}'.format(symbol))
         return self.response_wrapper(resp, Asset)
 
-    def get_barset(self,
-                   symbols,
-                   timeframe: str,
-                   limit: int = None,
-                   start: str = None,
-                   end: str = None,
-                   after: str = None,
-                   until: str = None) -> BarSet:
-        """
-        read the documentation here:
-        https://alpaca.markets/docs/api-documentation/api-v2/market-data/bars/
-        Get BarSet(dict[str]->list[Bar])
-        :param symbols: The parameter symbols can be either a comma-split
-               string or a list of string. Each symbol becomes the key of the
-               returned value.
-        :param timeframe: One of minute, 1Min, 5Min, 15Min, day or 1D. minute
-               is an alias of 1Min. Similarly, day is of 1D.
-        :param limit: The maximum number of bars per symbol. It can be between
-               1 and 1000. Default is 100.
-        :param start: ISO Format str, ex: '2019-04-15T09:30:00-04:00' or
-               '2019-04-15'
-        :param end: ISO Format str
-        :param after: ISO Format str
-        :param until: ISO Format str
-        :return: BarSet
-
-        note: start can't be used with after. end cannot be used with until.
-        """
-        if not isinstance(symbols, str):
-            symbols = ','.join(symbols)
-        params = {
-            'symbols': symbols,
-        }
-        if limit is not None:
-            params['limit'] = limit
-        if start is not None:
-            params['start'] = start
-        if end is not None:
-            params['end'] = end
-        if after is not None:
-            params['after'] = after
-        if until is not None:
-            params['until'] = until
-        resp = self.data_get('/bars/{}'.format(timeframe), params)
-        return self.response_wrapper(resp, BarSet)
-
-    def get_aggs(self,
-                 symbol: str,
-                 multiplier: int,
-                 timespan: str,
-                 _from: str,
-                 to: str) -> Aggs:
-        """
-
-        :param symbol: str eg AAPL
-        :param multiplier: must be 1
-        :param timespan: day or minute
-        :param _from: yyyy-mm-dd
-        :param to: yyyy-mm-dd
-        :return:
-        """
-        resp = self.data_get('/aggs/ticker/{}/range/{}/{}/{}/{}'.format(
-            symbol, multiplier, timespan, _from, to
-        ))
-        return self.response_wrapper(resp, Aggs)
-
-    def get_last_trade(self, symbol: str) -> Trade:
-        """
-        Get the last trade for the given symbol
-        """
-        resp = self.data_get('/last/stocks/{}'.format(symbol))
-        return self.response_wrapper(resp['last'], Trade)
-
-    def get_last_quote(self, symbol: str) -> Quote:
-        """Get the last quote for the given symbol"""
-        resp = self.data_get('/last_quote/stocks/{}'.format(symbol))
-        return self.response_wrapper(resp['last'], Quote)
-
     def _data_get(self,
                   endpoint: str,
                   symbol_or_symbols: Union[str, List[str]],
                   api_version: str = 'v2',
                   endpoint_base: str = 'stocks',
+                  resp_grouped_by_symbol: Optional[bool] = None,
+                  page_limit: int = DATA_V2_MAX_LIMIT,
+                  feed: Optional[str] = None,
+                  asof: Optional[str] = None,
                   **kwargs):
         page_token = None
         total_items = 0
         limit = kwargs.get('limit')
+        if resp_grouped_by_symbol is None:
+            resp_grouped_by_symbol = not isinstance(symbol_or_symbols, str)
         while True:
             actual_limit = None
             if limit:
-                actual_limit = min(int(limit) - total_items, DATA_V2_MAX_LIMIT)
+                actual_limit = min(int(limit) - total_items, page_limit)
                 if actual_limit < 1:
                     break
             data = kwargs
             data['limit'] = actual_limit
             data['page_token'] = page_token
-            if isinstance(symbol_or_symbols, str):
-                path = f'/{endpoint_base}/{symbol_or_symbols}/{endpoint}'
+            path = f'/{endpoint_base}'
+            if isinstance(symbol_or_symbols, str) and symbol_or_symbols:
+                path += f'/{symbol_or_symbols}'
             else:
-                path = f'/{endpoint_base}/{endpoint}'
                 data['symbols'] = ','.join(symbol_or_symbols)
-            resp = self.data_get(path, data=data, api_version=api_version)
-            if isinstance(symbol_or_symbols, str):
-                for item in resp.get(endpoint, []) or []:
+            if asof:
+                data['asof'] = asof
+            if endpoint:
+                path += f'/{endpoint}'
+            resp = self.data_get(path, data=data, feed=feed,
+                                 api_version=api_version)
+            if not resp_grouped_by_symbol:
+                k = endpoint or endpoint_base
+                for item in resp.get(k, []) or []:
                     yield item
                     total_items += 1
             else:
@@ -588,9 +605,16 @@ class REST(object):
                         start: Optional[str] = None,
                         end: Optional[str] = None,
                         limit: int = None,
+                        feed: Optional[str] = None,
+                        asof: Optional[str] = None,
                         raw=False) -> TradeIterator:
         trades = self._data_get('trades', symbol,
-                                start=start, end=end, limit=limit)
+                                start=start,
+                                end=end,
+                                limit=limit,
+                                feed=feed,
+                                asof=asof,
+                                )
         for trade in trades:
             if raw:
                 yield trade
@@ -602,9 +626,16 @@ class REST(object):
                    start: Optional[str] = None,
                    end: Optional[str] = None,
                    limit: int = None,
+                   feed: Optional[str] = None,
+                   asof: Optional[str] = None,
                    ) -> TradesV2:
         trades = list(self.get_trades_iter(symbol,
-                                           start, end, limit, raw=True))
+                                           start=start,
+                                           end=end,
+                                           limit=limit,
+                                           feed=feed,
+                                           asof=asof,
+                                           raw=True))
         return TradesV2(trades)
 
     def get_quotes_iter(self,
@@ -612,9 +643,16 @@ class REST(object):
                         start: Optional[str] = None,
                         end: Optional[str] = None,
                         limit: int = None,
+                        feed: Optional[str] = None,
+                        asof: Optional[str] = None,
                         raw=False) -> QuoteIterator:
         quotes = self._data_get('quotes', symbol,
-                                start=start, end=end, limit=limit)
+                                start=start,
+                                end=end,
+                                limit=limit,
+                                feed=feed,
+                                asof=asof,
+                                )
         for quote in quotes:
             if raw:
                 yield quote
@@ -626,12 +664,17 @@ class REST(object):
                    start: Optional[str] = None,
                    end: Optional[str] = None,
                    limit: int = None,
+                   feed: Optional[str] = None,
+                   asof: Optional[str] = None,
                    ) -> QuotesV2:
-        quotes = list(self.get_quotes_iter(symbol,
-                                           start,
-                                           end,
-                                           limit,
-                                           raw=True))
+        quotes = list(self.get_quotes_iter(symbol=symbol,
+                                           start=start,
+                                           end=end,
+                                           limit=limit,
+                                           feed=feed,
+                                           raw=True,
+                                           asof=asof,
+                                           ))
         return QuotesV2(quotes)
 
     def get_bars_iter(self,
@@ -641,11 +684,17 @@ class REST(object):
                       end: Optional[str] = None,
                       adjustment: str = 'raw',
                       limit: int = None,
+                      feed: Optional[str] = None,
+                      asof: Optional[str] = None,
                       raw=False) -> BarIterator:
         bars = self._data_get('bars', symbol,
                               timeframe=timeframe,
                               adjustment=adjustment,
-                              start=start, end=end, limit=limit)
+                              start=start,
+                              end=end,
+                              limit=limit,
+                              feed=feed,
+                              asof=asof)
         for bar in bars:
             if raw:
                 yield bar
@@ -659,6 +708,8 @@ class REST(object):
                  end: Optional[str] = None,
                  adjustment: str = 'raw',
                  limit: int = None,
+                 feed: Optional[str] = None,
+                 asof: Optional[str] = None,
                  ) -> BarsV2:
         bars = list(self.get_bars_iter(symbol,
                                        timeframe,
@@ -666,35 +717,70 @@ class REST(object):
                                        end,
                                        adjustment,
                                        limit,
+                                       feed=feed,
+                                       asof=asof,
                                        raw=True))
         return BarsV2(bars)
 
-    def get_latest_trade(self, symbol: str) -> TradeV2:
-        """
-        Get the latest trade for the given symbol
-        """
+    def get_latest_bar(self, symbol: str, feed: Optional[str] = None) -> BarV2:
+        resp = self.data_get(
+            '/stocks/{}/bars/latest'.format(symbol),
+            feed=feed,
+            api_version='v2')
+        return self.response_wrapper(resp['bar'], BarV2)
+
+    def get_latest_bars(self, symbols: List[str],
+                        feed: Optional[str] = None) -> LatestBarsV2:
+        resp = self.data_get(
+            f'/stocks/bars/latest?symbols={_join_with_commas(symbols)}',
+            feed=feed,
+            api_version='v2')
+        return self.response_wrapper(resp['bars'], LatestBarsV2)
+
+    def get_latest_trade(self, symbol: str,
+                         feed: Optional[str] = None) -> TradeV2:
         resp = self.data_get(
             '/stocks/{}/trades/latest'.format(symbol),
+            feed=feed,
             api_version='v2')
         return self.response_wrapper(resp['trade'], TradeV2)
 
-    def get_latest_quote(self, symbol: str) -> QuoteV2:
-        """Get the latest quote for the given symbol"""
+    def get_latest_trades(self, symbols: List[str],
+                          feed: Optional[str] = None) -> LatestTradesV2:
+        resp = self.data_get(
+            f'/stocks/trades/latest?symbols={_join_with_commas(symbols)}',
+            feed=feed,
+            api_version='v2')
+        return self.response_wrapper(resp['trades'], LatestTradesV2)
+
+    def get_latest_quote(self, symbol: str,
+                         feed: Optional[str] = None) -> QuoteV2:
         resp = self.data_get(
             '/stocks/{}/quotes/latest'.format(symbol),
+            feed=feed,
             api_version='v2')
         return self.response_wrapper(resp['quote'], QuoteV2)
 
-    def get_snapshot(self, symbol: str) -> SnapshotV2:
-        """Get the snapshot for the given symbol"""
+    def get_latest_quotes(self, symbols: List[str],
+                          feed: Optional[str] = None) -> LatestQuotesV2:
+        resp = self.data_get(
+            f'/stocks/quotes/latest?symbols={_join_with_commas(symbols)}',
+            feed=feed,
+            api_version='v2')
+        return self.response_wrapper(resp['quotes'], LatestQuotesV2)
+
+    def get_snapshot(self, symbol: str,
+                     feed: Optional[str] = None) -> SnapshotV2:
         resp = self.data_get('/stocks/{}/snapshot'.format(symbol),
+                             feed=feed,
                              api_version='v2')
         return self.response_wrapper(resp, SnapshotV2)
 
-    def get_snapshots(self, symbols: List[str]) -> SnapshotsV2:
-        """Get the snapshots for the given symbols"""
+    def get_snapshots(self, symbols: List[str],
+                      feed: Optional[str] = None) -> SnapshotsV2:
         resp = self.data_get(
-            '/stocks/snapshots?symbols={}'.format(','.join(symbols)),
+            '/stocks/snapshots?symbols={}'.format(_join_with_commas(symbols)),
+            feed=feed,
             api_version='v2')
         return self.response_wrapper(resp, SnapshotsV2)
 
@@ -782,12 +868,37 @@ class REST(object):
         return BarsV2(list(self.get_crypto_bars_iter(
             symbol, timeframe, start, end, limit, exchanges, raw=True)))
 
+    def get_latest_crypto_bar(self, symbol: str, exchange: str) -> BarV2:
+        resp = self.data_get(
+            '/crypto/{}/bars/latest'.format(symbol),
+            data={'exchange': exchange},
+            api_version='v1beta1')
+        return self.response_wrapper(resp['bar'], BarV2)
+
+    def get_latest_crypto_bars(self,
+                               symbols: List[str],
+                               exchange: str) -> LatestBarsV2:
+        resp = self.data_get(
+            '/crypto/bars/latest',
+            data={'exchange': exchange, 'symbols': _join_with_commas(symbols)},
+            api_version='v1beta1')
+        return self.response_wrapper(resp['bars'], LatestBarsV2)
+
     def get_latest_crypto_trade(self, symbol: str, exchange: str) -> TradeV2:
         resp = self.data_get(
             '/crypto/{}/trades/latest'.format(symbol),
             data={'exchange': exchange},
             api_version='v1beta1')
         return self.response_wrapper(resp['trade'], TradeV2)
+
+    def get_latest_crypto_trades(self,
+                                 symbols: List[str],
+                                 exchange: str) -> LatestTradesV2:
+        resp = self.data_get(
+            '/crypto/trades/latest',
+            data={'exchange': exchange, 'symbols': _join_with_commas(symbols)},
+            api_version='v1beta1')
+        return self.response_wrapper(resp['trades'], LatestTradesV2)
 
     def get_latest_crypto_quote(self, symbol: str, exchange: str) -> QuoteV2:
         resp = self.data_get(
@@ -796,18 +907,99 @@ class REST(object):
             api_version='v1beta1')
         return self.response_wrapper(resp['quote'], QuoteV2)
 
+    def get_latest_crypto_quotes(self,
+                                 symbols: List[str],
+                                 exchange: str) -> LatestQuotesV2:
+        resp = self.data_get(
+            '/crypto/quotes/latest',
+            data={'exchange': exchange, 'symbols': _join_with_commas(symbols)},
+            api_version='v1beta1')
+        return self.response_wrapper(resp['quotes'], LatestQuotesV2)
+
     def get_latest_crypto_xbbo(self,
                                symbol: str,
                                exchanges: Optional[List[str]] = None,
                                ) -> QuoteV2:
         params = {}
         if exchanges:
-            params['exchanges'] = ','.join(exchanges)
+            params['exchanges'] = _join_with_commas(exchanges)
         resp = self.data_get(
             '/crypto/{}/xbbo/latest'.format(symbol),
             data=params,
             api_version='v1beta1')
         return self.response_wrapper(resp['xbbo'], QuoteV2)
+
+    def get_latest_crypto_xbbos(self,
+                                symbols: List[str],
+                                exchanges: Optional[List[str]] = None,
+                                ) -> QuoteV2:
+        params = {'symbols': _join_with_commas(symbols)}
+        if exchanges:
+            params['exchanges'] = _join_with_commas(exchanges)
+        resp = self.data_get(
+            '/crypto/xbbos/latest',
+            data=params,
+            api_version='v1beta1')
+        return self.response_wrapper(resp['xbbos'], QuotesV2)
+
+    def get_crypto_snapshot(self, symbol: str, exchange: str) -> SnapshotV2:
+        resp = self.data_get('/crypto/{}/snapshot'.format(symbol),
+                             data={'exchange': exchange},
+                             api_version='v1beta1')
+        return self.response_wrapper(resp, SnapshotV2)
+
+    def get_latest_crypto_snapshots(self,
+                                    symbols: List[str],
+                                    exchange: str) -> SnapshotsV2:
+        resp = self.data_get(
+            '/crypto/snapshots',
+            data={'exchange': exchange, 'symbols': _join_with_commas(symbols)},
+            api_version='v1beta1')
+        return self.response_wrapper(resp['snapshots'], SnapshotsV2)
+
+    def get_news_iter(self,
+                      symbol: Optional[Union[str, List[str]]] = None,
+                      start: Optional[str] = None,
+                      end: Optional[str] = None,
+                      limit: int = 10,
+                      sort: Sort = Sort.Desc,
+                      include_content: bool = False,
+                      exclude_contentless: bool = False,
+                      raw=False) -> NewsIterator:
+        symbol = symbol or []
+        # Avoid passing symbol as path param
+        if isinstance(symbol, str):
+            symbol = [symbol]
+        news = self._data_get('', symbol,
+                              api_version='v1beta1', endpoint_base='news',
+                              start=start, end=end, limit=limit, sort=sort,
+                              include_content=include_content,
+                              exclude_contentless=exclude_contentless,
+                              resp_grouped_by_symbol=False,
+                              page_limit=NEWS_MAX_LIMIT)
+        for n in news:
+            if raw:
+                yield n
+            else:
+                yield self.response_wrapper(n, NewsV2)
+
+    def get_news(self,
+                 symbol: Optional[Union[str, List[str]]] = None,
+                 start: Optional[str] = None,
+                 end: Optional[str] = None,
+                 limit: int = 10,
+                 sort: Sort = Sort.Desc,
+                 include_content: bool = False,
+                 exclude_contentless: bool = False,
+
+                 ) -> NewsListV2:
+        news = list(self.get_news_iter(symbol=symbol,
+                                       start=start, end=end,
+                                       limit=limit, sort=sort,
+                                       include_content=include_content,
+                                       exclude_contentless=exclude_contentless,
+                                       raw=True))
+        return NewsListV2(news)
 
     def get_clock(self) -> Clock:
         resp = self.get('/clock')
@@ -990,3 +1182,9 @@ class REST(object):
             return obj
         else:
             return entity(obj)
+
+
+def _join_with_commas(lst: List[str]) -> str:
+    if isinstance(lst, str):
+        raise ValueError('expected list, str found')
+    return ','.join(lst)
