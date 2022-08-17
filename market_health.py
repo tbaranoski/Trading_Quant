@@ -11,6 +11,8 @@
 ##########################################################################################################################################################
 #import alpaca_trade_api as tradeapi
 from alpaca_trade_api.rest import REST, TimeFrame
+import datetime as dt #to get date
+import pytz #to get date
 #api_test = REST()
 #import alpaca_trad_api #delete
 
@@ -20,8 +22,7 @@ SHORT_DISTRIBUTION =  7
 PERCENT_TO_BE_DISTRIBUTION = -.2
 
 #############################################################################################################################################
-##Returns Long Term Distribution Day Count (Last 25 DAYS) for Major Indexes:
-#$SPY, $QQQ, $DIA, $IWO, $IWM
+##Returns Distribution Day Count
 def get_Distribution_DAY_COUNT(NUM_DAYS, TICKER_D_BARS):
     distribution_days = 0
 
@@ -30,7 +31,7 @@ def get_Distribution_DAY_COUNT(NUM_DAYS, TICKER_D_BARS):
         change_percent = ((((TICKER_D_BARS[NUM_DAYS - i-1].c) - (TICKER_D_BARS[NUM_DAYS - i-2].c)) / (TICKER_D_BARS[NUM_DAYS - i-1].c))) * 100
         #print("Change %: ", change_percent)
 
-        # IF index dropped by more than 2% look at volume comparison between yesterday and today
+        # IF index dropped by more than .2% look at volume comparison between yesterday and today
         if(change_percent <= PERCENT_TO_BE_DISTRIBUTION):
             if((TICKER_D_BARS[NUM_DAYS - i-1].v - (TICKER_D_BARS[NUM_DAYS - i-2].c)) > 0):                
                 distribution_days = distribution_days + 1
@@ -49,24 +50,33 @@ def get_Distribution_DAY_COUNT(NUM_DAYS, TICKER_D_BARS):
 
 #Main function in file
 def get_Market_health(api):
-    #MAIN()
-    SPY_D_BARSET_LONG = api.get_bars('SPY', TimeFrame.Day, limit = LONG_DISTRIBUTION)
+    
+    #Calculate start_time since get_bars works in reverse for get_bars (V2 endpoint)
+    #Reference https://forum.alpaca.markets/t/get-bars-vs-get-barset/8127/6
+    timeNow = dt.datetime.now(pytz.timezone('US/Eastern'))
+    start_time_long_distribution = timeNow - dt.timedelta(days=LONG_DISTRIBUTION)
+    start_time_short_distribution = timeNow - dt.timedelta(days=SHORT_DISTRIBUTION)
+
+    #Get data for SPY and QQQ
+
+
+    SPY_D_BARSET_LONG = api.get_bars('SPY', TimeFrame.Day, start = start_time_long_distribution.isoformat(), end = None, limit = LONG_DISTRIBUTION)
     #SPY_D_BARS_LONG = SPY_D_BARSET_LONG['SPY']
 
-    SPY_D_BARSET_SHORT = api.get_bars('SPY', TimeFrame.Day, limit = SHORT_DISTRIBUTION)
+    SPY_D_BARSET_SHORT = api.get_bars('SPY', TimeFrame.Day, start = start_time_short_distribution.isoformat(), end = None, limit = SHORT_DISTRIBUTION)
     #SPY_D_BARS_SHORT = SPY_D_BARSET_SHORT['SPY']
 
-    QQQ_D_BARSET_LONG = api.get_bars('QQQ', TimeFrame.Day, limit = LONG_DISTRIBUTION)
+    QQQ_D_BARSET_LONG = api.get_bars('QQQ', TimeFrame.Day, start = start_time_long_distribution.isoformat(), end = None, limit = LONG_DISTRIBUTION)
     #QQQ_D_BARS_LONG = QQQ_D_BARSET_LONG['QQQ']
 
-    QQQ_D_BARSET_SHORT = api.get_bars('QQQ', TimeFrame.Day, limit = SHORT_DISTRIBUTION)
+    QQQ_D_BARSET_SHORT = api.get_bars('QQQ', TimeFrame.Day, start = start_time_short_distribution.isoformat(), end = None, limit = SHORT_DISTRIBUTION)
     #QQQ_D_BARS_SHORT = QQQ_D_BARSET_SHORT['QQQ']
 
 
     #Calculate distribution days
-    #SPY_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION, SPY_D_BARS_LONG)
+    SPY_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION, SPY_D_BARSET_LONG)
     #SPY_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION, SPY_D_BARS_SHORT)
     #QQQ_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION, QQQ_D_BARS_LONG)
     #QQQ_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION, QQQ_D_BARS_SHORT)
 
-    #print("test print: ", QQQ_DIST_LONG)
+    print("test print: ", SPY_DIST_LONG)
