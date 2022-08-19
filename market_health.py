@@ -13,27 +13,34 @@
 from alpaca_trade_api.rest import REST, TimeFrame
 import datetime as dt #to get date
 import pytz #to get date
+import math #rounding purposes
 #api_test = REST()
 #import alpaca_trad_api #delete
 
 #Constants
-LONG_DISTRIBUTION = 25
-SHORT_DISTRIBUTION =  7
 PERCENT_TO_BE_DISTRIBUTION = -.2
+LONG_DISTRIBUTION_NUMBER = 25
+SHORT_DISTRIBUTION_NUMBER = 7
+
+#CONSTANT COMPUTATIONS
+#To account for Sunday and Saturday which are not actual tradin days. + 10 accounts for any holidays
+LONG_DISTRIBUTION = math.ceil((LONG_DISTRIBUTION_NUMBER *((9/7)) + 10))
+print("The Long distribution is: ", LONG_DISTRIBUTION)
+SHORT_DISTRIBUTION =  math.ceil((SHORT_DISTRIBUTION_NUMBER *((9/7)) + 10))
 
 #############################################################################################################################################
 ##Returns Distribution Day Count
 def get_Distribution_DAY_COUNT(NUM_DAYS, TICKER_D_BARS):
     distribution_days = 0
 
-    for i in range (NUM_DAYS):
+    for i in range (NUM_DAYS - 1):
         #Calculate percentage chnage from yesterdays close
-        change_percent = ((((TICKER_D_BARS[NUM_DAYS - i-1].c) - (TICKER_D_BARS[NUM_DAYS - i-2].c)) / (TICKER_D_BARS[NUM_DAYS - i-1].c))) * 100
-        #print("Change %: ", change_percent)
+        change_percent = ((((TICKER_D_BARS[i].c) - (TICKER_D_BARS[i-1].c)) / (TICKER_D_BARS[i-1].c))) * 100
+        print("Change %: ", change_percent)
 
         # IF index dropped by more than .2% look at volume comparison between yesterday and today
         if(change_percent <= PERCENT_TO_BE_DISTRIBUTION):
-            if((TICKER_D_BARS[NUM_DAYS - i-1].v - (TICKER_D_BARS[NUM_DAYS - i-2].c)) > 0):                
+            if((TICKER_D_BARS[i].v - (TICKER_D_BARS[i+1].v)) > 0):                
                 distribution_days = distribution_days + 1
 
     return distribution_days
@@ -54,6 +61,8 @@ def get_Market_health(api):
     #Calculate start_time since get_bars works in reverse for get_bars (V2 endpoint)
     #Reference https://forum.alpaca.markets/t/get-bars-vs-get-barset/8127/6
     timeNow = dt.datetime.now(pytz.timezone('US/Eastern'))
+    print("\n\nThe time now is: ", timeNow)
+
     start_time_long_distribution = timeNow - dt.timedelta(days=LONG_DISTRIBUTION)
     start_time_short_distribution = timeNow - dt.timedelta(days=SHORT_DISTRIBUTION)
 
@@ -72,11 +81,12 @@ def get_Market_health(api):
     QQQ_D_BARSET_SHORT = api.get_bars('QQQ', TimeFrame.Day, start = start_time_short_distribution.isoformat(), end = None, limit = SHORT_DISTRIBUTION)
     #QQQ_D_BARS_SHORT = QQQ_D_BARSET_SHORT['QQQ']
 
+    print (SPY_D_BARSET_LONG)
 
     #Calculate distribution days
-    SPY_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION, SPY_D_BARSET_LONG)
-    #SPY_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION, SPY_D_BARS_SHORT)
-    #QQQ_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION, QQQ_D_BARS_LONG)
-    #QQQ_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION, QQQ_D_BARS_SHORT)
+    SPY_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION_NUMBER, SPY_D_BARSET_LONG)
+    #SPY_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION_NUMBER, SPY_D_BARS_SHORT)
+    #QQQ_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION_NUMBER, QQQ_D_BARS_LONG)
+    #QQQ_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION_NUMBER, QQQ_D_BARS_SHORT)
 
     print("test print: ", SPY_DIST_LONG)
