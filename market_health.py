@@ -30,43 +30,47 @@ SHORT_DISTRIBUTION =  math.ceil((SHORT_DISTRIBUTION_NUMBER *((9/7)) + 10))
 
 #############################################################################################################################################
 
+#FOR TESTING
 def print_Close(NUM_DAYS, TICKER_D_BARS):
     lenght_data = len(TICKER_D_BARS)
     for i in range (lenght_data):
         print("Index: ", i, "Date: ", TICKER_D_BARS[i].t, "Close: ", TICKER_D_BARS[i].c )
 
 
-
 ##Returns Distribution Day Count
 def get_Distribution_DAY_COUNT(NUM_DAYS, TICKER_D_BARS):
     distribution_days = 0
 
-    for i in range (NUM_DAYS - 1):
+    #Get Start Index
+    start_index = (len(TICKER_D_BARS)) - NUM_DAYS
+    end_index = (len(TICKER_D_BARS)) - 1
+    print (start_index)
+    print (end_index)
+
+
+    for i in range (start_index, end_index):
         #Calculate percentage chnage from yesterdays close
-        change_percent = ((((TICKER_D_BARS[i].c) - (TICKER_D_BARS[i-1].c)) / (TICKER_D_BARS[i-1].c))) * 100
-        print("Change %: ", change_percent, "Close is: ", TICKER_D_BARS[i-1].c, "Date is: ", TICKER_D_BARS[i-1].t)
+        change_percent = ((((TICKER_D_BARS[i+1].c) - (TICKER_D_BARS[i].c)) / (TICKER_D_BARS[i].c))) * 100
+        #print("Change %: ", change_percent, "Close is: ", TICKER_D_BARS[i].c, "Date is: ", TICKER_D_BARS[i].t)
 
         # IF index dropped by more than .2% look at volume comparison between yesterday and today
         if(change_percent <= PERCENT_TO_BE_DISTRIBUTION):
-            if((TICKER_D_BARS[i].v - (TICKER_D_BARS[i-1].v)) > 0):                
+            if((TICKER_D_BARS[i+1].v - (TICKER_D_BARS[i].v)) > 0):                
                 distribution_days = distribution_days + 1
                 #print("Distribution Day\n")
 
     return distribution_days
 #############################################################################################################################################
-
-##Returns SHORT Term Distribution Day Count (Last 7 DAYS) for Major Indexes:
-#$SPY, $QQQ, $DIA, $IWO, $IWM
-
-##Returns whether Major Indexes are above 21EMA and 9 EMA
-##$SPY, $QQQ, $DIA, $IWO, $IWM
-
-##Calculate Scores
-
-
 #Main function in file
 def get_Market_health(api):
     
+    ###################################################################################
+    ###################################################################################
+    #calculate Distribution Day Count For Major Indexes ($SPY, $QQQ, $DIA, $IWO, $IWM)
+    # over a longer period (currentlly lsast 25 days) and over a shorter period (last 7 days)
+    ###################################################################################
+    ###################################################################################
+
     #Calculate start_time since get_bars works in reverse for get_bars (V2 endpoint)
     #Reference https://forum.alpaca.markets/t/get-bars-vs-get-barset/8127/6
     timeNow = dt.datetime.now(pytz.timezone('US/Eastern'))
@@ -75,28 +79,35 @@ def get_Market_health(api):
     start_time_long_distribution = timeNow - dt.timedelta(days=LONG_DISTRIBUTION)
     start_time_short_distribution = timeNow - dt.timedelta(days=SHORT_DISTRIBUTION)
 
-    #Get data for SPY and QQQ
-
-
-    SPY_D_BARSET_LONG = api.get_bars('SPY', TimeFrame.Day, start = start_time_long_distribution.isoformat(), end = None, limit = LONG_DISTRIBUTION)
-    #SPY_D_BARS_LONG = SPY_D_BARSET_LONG['SPY']
-
-    SPY_D_BARSET_SHORT = api.get_bars('SPY', TimeFrame.Day, start = start_time_short_distribution.isoformat(), end = None, limit = SHORT_DISTRIBUTION)
-    #SPY_D_BARS_SHORT = SPY_D_BARSET_SHORT['SPY']
-
-    QQQ_D_BARSET_LONG = api.get_bars('QQQ', TimeFrame.Day, start = start_time_long_distribution.isoformat(), end = None, limit = LONG_DISTRIBUTION)
-    #QQQ_D_BARS_LONG = QQQ_D_BARSET_LONG['QQQ']
-
-    QQQ_D_BARSET_SHORT = api.get_bars('QQQ', TimeFrame.Day, start = start_time_short_distribution.isoformat(), end = None, limit = SHORT_DISTRIBUTION)
-    #QQQ_D_BARS_SHORT = QQQ_D_BARSET_SHORT['QQQ']
-
-    print (SPY_D_BARSET_LONG)
+    #Get DAILY BARS for SPY and QQQ and DIA, IWO, and IWM
+    SPY_D_BARSET = api.get_bars('SPY', TimeFrame.Day, start = start_time_long_distribution.isoformat(), end = None, limit = LONG_DISTRIBUTION)
+    QQQ_D_BARSET = api.get_bars('QQQ', TimeFrame.Day, start = start_time_long_distribution.isoformat(), end = None, limit = LONG_DISTRIBUTION)
+    DIA_D_BARSET = api.get_bars('DIA', TimeFrame.Day, start = start_time_long_distribution.isoformat(), end = None, limit = LONG_DISTRIBUTION)
+    IWO_D_BARSET = api.get_bars('IWO', TimeFrame.Day, start = start_time_long_distribution.isoformat(), end = None, limit = LONG_DISTRIBUTION)
+    IWM_D_BARSET = api.get_bars('IWM', TimeFrame.Day, start = start_time_long_distribution.isoformat(), end = None, limit = LONG_DISTRIBUTION)
 
     #Calculate distribution days
-    #SPY_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION_NUMBER, SPY_D_BARSET_LONG)
-    print_Close(LONG_DISTRIBUTION_NUMBER, SPY_D_BARSET_LONG)
-    #SPY_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION_NUMBER, SPY_D_BARS_SHORT)
-    #QQQ_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION_NUMBER, QQQ_D_BARS_LONG)
-    #QQQ_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION_NUMBER, QQQ_D_BARS_SHORT)
+    SPY_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION_NUMBER, SPY_D_BARSET)
+    SPY_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION_NUMBER, SPY_D_BARSET)
+    QQQ_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION_NUMBER, QQQ_D_BARSET)
+    QQQ_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION_NUMBER, QQQ_D_BARSET)
+    DIA_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION_NUMBER, DIA_D_BARSET)
+    DIA_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION_NUMBER, DIA_D_BARSET)
+    IWO_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION_NUMBER, IWO_D_BARSET)
+    IWO_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION_NUMBER, IWO_D_BARSET)
+    IWM_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION_NUMBER, IWM_D_BARSET)
+    IWM_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION_NUMBER, IWM_D_BARSET)
 
-    print("test print: ", SPY_DIST_LONG)
+    #Print Distribution Days
+    print("Distribution Day Count($SPY) over last",LONG_DISTRIBUTION_NUMBER, " days: ", SPY_DIST_LONG)
+    print("Distribution Day Count($SPY) over last",SHORT_DISTRIBUTION_NUMBER, " days: ", SPY_DIST_SHORT)
+    print("Distribution Day Count($QQQ) over last",LONG_DISTRIBUTION_NUMBER, " days: ", QQQ_DIST_LONG)
+    print("Distribution Day Count($QQQ) over last",SHORT_DISTRIBUTION_NUMBER, " days: ", QQQ_DIST_SHORT)
+    print("Distribution Day Count($DIA) over last",LONG_DISTRIBUTION_NUMBER, " days: ", DIA_DIST_LONG)
+    print("Distribution Day Count($DIA) over last",SHORT_DISTRIBUTION_NUMBER, " days: ", DIA_DIST_SHORT)
+    print("Distribution Day Count($IWO) over last",LONG_DISTRIBUTION_NUMBER, " days: ", IWO_DIST_LONG)
+    print("Distribution Day Count($IWO) over last",SHORT_DISTRIBUTION_NUMBER, " days: ", IWO_DIST_SHORT)
+    print("Distribution Day Count($IWM) over last",LONG_DISTRIBUTION_NUMBER, " days: ", IWM_DIST_LONG)
+    print("Distribution Day Count($IWM) over last",SHORT_DISTRIBUTION_NUMBER, " days: ", IWM_DIST_SHORT)
+
+    #def print_distribution_day
