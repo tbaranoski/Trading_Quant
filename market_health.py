@@ -23,7 +23,7 @@ LONG_DISTRIBUTION_NUMBER = 25
 SHORT_DISTRIBUTION_NUMBER = 7
 
 #CONSTANT COMPUTATIONS
-#To account for Sunday and Saturday which are not actual tradin days. + 10 accounts for any holidays
+#To account for Sunday and Saturday which are not actual trading days. + 10 accounts for any holidays
 LONG_DISTRIBUTION = math.ceil((LONG_DISTRIBUTION_NUMBER *((9/7)) + 10))
 SHORT_DISTRIBUTION =  math.ceil((SHORT_DISTRIBUTION_NUMBER *((9/7)) + 10))
 
@@ -48,6 +48,7 @@ def print_Close(NUM_DAYS, TICKER_D_BARS):
         print("Index: ", i, "Date: ", TICKER_D_BARS[i].t, "Close: ", TICKER_D_BARS[i].c )
 ############################################################################################################################################
 ############################################################################################################################################
+
 
 ##Returns Distribution Day Count
 def get_Distribution_DAY_COUNT(NUM_DAYS, TICKER_D_BARS):
@@ -112,5 +113,22 @@ def get_distribution_health(api):
 #Determine if Indexes are above 9ema AND 21 ema on DAILY CHART
 def get_ema_health(api):
 
-    print("Hit function")
-    print ("OK")
+    #Constants
+    SHORT_EMA = 9
+    LONG_EMA = 21
+
+    #Computations to get extra bars since get_bars() will count weekends and holidays as a day
+    #math.ceil((LONG_DISTRIBUTION_NUMBER *((9/7)) + 10))
+    DATA_PERIOD = math.ceil((((LONG_EMA * 2) * (9/7)) + 10))
+    timeNow = dt.datetime.now(pytz.timezone('US/Eastern'))
+    start_time_long_emas = timeNow - dt.timedelta(days=DATA_PERIOD)
+
+    #Get Daily bar data
+    SPY_EMA = api.get_bars('SPY', TimeFrame.Day, start = start_time_long_emas.isoformat(), end = None, limit = DATA_PERIOD)
+    
+    #Test print to make sure data is not messed up
+    print_Close(DATA_PERIOD, SPY_EMA)
+
+
+    #Compute Exponential average using funciton
+

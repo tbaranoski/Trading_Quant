@@ -17,8 +17,8 @@ import matplotlib.pyplot as plt
 
 #test for alpha_vantage
 #def get_ema(self, symbol, interval='daily', time_period=20, series_type='close'):
-ti = TechIndicators(key= API_KEY, output_format='pandas')
-data, meta_data = ti.get_ema(symbol='MSFT', interval='daily', time_period=21)
+#ti = TechIndicators(key= API_KEY, output_format='pandas')
+#data, meta_data = ti.get_ema(symbol='MSFT', interval='daily', time_period=21)
 #data.plot()
 #plt.title('21 EMA indicator for  MSFT stock (DAILY)')
 #plt.show()
