@@ -48,12 +48,13 @@ def main():
     #print (account)
 
 
-
     #print ("test!!!")
     #orders = get_orders()
     #print(orders)
 
     #print ("New TEST: \n\n\n")
-    market_health.get_Market_health(api)
+    distribution_array_indexes = market_health.get_distribution_health(api)
+    market_health.get_ema_health(api)
 
+    
 main()

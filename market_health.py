@@ -71,7 +71,7 @@ def get_Distribution_DAY_COUNT(NUM_DAYS, TICKER_D_BARS):
     return distribution_days
 #############################################################################################################################################
 #Main function in file
-def get_Market_health(api):
+def get_distribution_health(api):
     
     ###################################################################################
     ###################################################################################
@@ -104,5 +104,13 @@ def get_Market_health(api):
     IWM_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION_NUMBER, IWM_D_BARSET)
     IWM_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION_NUMBER, IWM_D_BARSET)
 
-    distribution_array = [SPY_DIST_LONG,SPY_DIST_SHORT,QQQ_DIST_LONG,QQQ_DIST_SHORT,DIA_DIST_LONG,DIA_DIST_SHORT,IWO_DIST_LONG,IWO_DIST_SHORT,IWM_DIST_LONG,IWM_DIST_SHORT]
-    print_distribution_day(distribution_array)
+    distribution_array_indexes = [SPY_DIST_LONG,SPY_DIST_SHORT,QQQ_DIST_LONG,QQQ_DIST_SHORT,DIA_DIST_LONG,DIA_DIST_SHORT,IWO_DIST_LONG,IWO_DIST_SHORT,IWM_DIST_LONG,IWM_DIST_SHORT]
+    print_distribution_day(distribution_array_indexes)
+
+    return distribution_array_indexes
+
+#Determine if Indexes are above 9ema AND 21 ema on DAILY CHART
+def get_ema_health(api):
+
+    print("Hit function")
+    print ("OK")
