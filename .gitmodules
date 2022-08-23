@@ -1,0 +1,3 @@
+[submodule "alpha_vantage"]
+	path = alpha_vantage
+	url = https://github.com/RomelTorres/alpha_vantage.git
