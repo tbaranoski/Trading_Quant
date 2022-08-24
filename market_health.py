@@ -24,7 +24,7 @@ SHORT_DISTRIBUTION_NUMBER = 7
 
 #CONSTANT COMPUTATIONS
 #To account for Sunday and Saturday which are not actual trading days. + 10 accounts for any holidays
-LONG_DISTRIBUTION = math.ceil((LONG_DISTRIBUTION_NUMBER *((9/7)) + 10))
+LONG_DISTRIBUTION = math.ceil((LONG_DISTRIBUTION_NUMBER *((7/5)) + 10))
 SHORT_DISTRIBUTION =  math.ceil((SHORT_DISTRIBUTION_NUMBER *((9/7)) + 10))
 
 #############################################################################################################################################
@@ -118,8 +118,8 @@ def get_ema_health(api):
     LONG_EMA = 21
 
     #Computations to get extra bars since get_bars() will count weekends and holidays as a day
-    #math.ceil((LONG_DISTRIBUTION_NUMBER *((9/7)) + 10))
-    DATA_PERIOD = math.ceil((((LONG_EMA * 2) * (9/7)) + 10))
+    #math.ceil((LONG_DISTRIBUTION_NUMBER *((7/5)) + 10))
+    DATA_PERIOD = math.ceil((((LONG_EMA * 2) * (7/5)) + 10))
     timeNow = dt.datetime.now(pytz.timezone('US/Eastern'))
     start_time_long_emas = timeNow - dt.timedelta(days=DATA_PERIOD)
 
@@ -127,8 +127,61 @@ def get_ema_health(api):
     SPY_EMA = api.get_bars('SPY', TimeFrame.Day, start = start_time_long_emas.isoformat(), end = None, limit = DATA_PERIOD)
     
     #Test print to make sure data is not messed up
-    print_Close(DATA_PERIOD, SPY_EMA)
+    #print_Close(DATA_PERIOD, SPY_EMA)
 
 
-    #Compute Exponential average using funciton
+    #Compute Exponential average using ema funciton. Pass in closing values
+    SPY_EMA_C = parse_closes(SPY_EMA)
+    SPY_21D_EMA = ema(SPY_EMA_C, LONG_EMA)
+    SPY_9D_EMA = ema(SPY_EMA_C, SHORT_EMA)
 
+
+
+    print (SPY_21D_EMA)
+
+################################################################################################################
+### Parse CLosing Data ##########
+def parse_closes(RAW_DATA):
+    temp_array = []
+    
+    for i in range((len(RAW_DATA)) -1):
+        temp_array.append(RAW_DATA[i].c)
+
+    return temp_array
+################################################################################################################
+
+
+################################################################################################################
+#Function TAKEN FROM https://stackoverflow.com/questions/488670/calculate-exponential-moving-average-in-python
+def ema(s, n):
+    """
+    returns an n period exponential moving average for
+    the time series s
+
+    s is a list ordered from oldest (index 0) to most
+    recent (index -1)
+    n is an integer
+
+    returns a numeric array of the exponential
+    moving average
+    """
+    #s = array(s)
+    ema = []
+    j = 1
+
+    #get n sma first and calculate the next n period ema
+    sma = sum(s[:n]) / n
+    multiplier = 2 / float(1 + n)
+    ema.append(sma)
+
+    #EMA(current) = ( (Price(current) - EMA(prev) ) x Multiplier) + EMA(prev)
+    ema.append(( (s[n] - sma) * multiplier) + sma)
+
+    #now calculate the rest of the values
+    for i in s[n+1:]:
+        tmp = ( (i - ema[j]) * multiplier) + ema[j]
+        j = j + 1
+        ema.append(tmp)
+
+    return ema
+    ################################################################################################################

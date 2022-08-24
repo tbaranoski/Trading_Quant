@@ -450,3 +450,7 @@ Alpaca's customer support.
 
 New features, as well as bug fixes, by sending a pull request is always
 welcomed.
+
+
+## Added Dependencies
+pip install mysql-connector
