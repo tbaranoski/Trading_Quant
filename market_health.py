@@ -125,19 +125,53 @@ def get_ema_health(api):
 
     #Get Daily bar data
     SPY_EMA = api.get_bars('SPY', TimeFrame.Day, start = start_time_long_emas.isoformat(), end = None, limit = DATA_PERIOD)
+    QQQ_EMA = api.get_bars('QQQ', TimeFrame.Day, start = start_time_long_emas.isoformat(), end = None, limit = DATA_PERIOD)
+    DIA_EMA = api.get_bars('DIA', TimeFrame.Day, start = start_time_long_emas.isoformat(), end = None, limit = DATA_PERIOD)
+    IWM_EMA = api.get_bars('IWM', TimeFrame.Day, start = start_time_long_emas.isoformat(), end = None, limit = DATA_PERIOD)
+    IWO_EMA = api.get_bars('IWO', TimeFrame.Day, start = start_time_long_emas.isoformat(), end = None, limit = DATA_PERIOD)
     
     #Test print to make sure data is not messed up
     #print_Close(DATA_PERIOD, SPY_EMA)
 
-
     #Compute Exponential average using ema funciton. Pass in closing values
+    #Start by parsing only the candle closes
     SPY_EMA_C = parse_closes(SPY_EMA)
+    QQQ_EMA_C = parse_closes(QQQ_EMA)
+    DIA_EMA_C = parse_closes(DIA_EMA)
+    IWM_EMA_C = parse_closes(IWM_EMA)
+    IWO_EMA_C = parse_closes(IWO_EMA)
+
+    #Compute Long and Short EMA for each index
+
     SPY_21D_EMA = ema(SPY_EMA_C, LONG_EMA)
     SPY_9D_EMA = ema(SPY_EMA_C, SHORT_EMA)
 
+    QQQ_21D_EMA = ema(QQQ_EMA_C, LONG_EMA)
+    QQQ_9D_EMA = ema(QQQ_EMA_C, SHORT_EMA)
 
+    DIA_21D_EMA = ema(DIA_EMA_C, LONG_EMA)
+    DIA_9D_EMA = ema(DIA_EMA_C, SHORT_EMA)
+
+    IWM_21D_EMA = ema(IWM_EMA_C, LONG_EMA)
+    IWM_9D_EMA = ema(IWM_EMA_C, SHORT_EMA)
+
+    IWO_21D_EMA = ema(IWO_EMA_C, LONG_EMA)
+    IWO_9D_EMA = ema(IWO_EMA_C, SHORT_EMA)
+
+
+    #test print for allignment purposes
+
+    #todays close
+    end = len(SPY_EMA_C)
+    print("RIGHT NOW ON SPY IS: ", SPY_EMA_C[end-1])
 
     print (SPY_21D_EMA)
+    print("The length of the array is: ", len(SPY_21D_EMA))
+
+
+    print("\n\n\n")
+    print (SPY_9D_EMA)
+    print("The length of the array is: ", len(SPY_9D_EMA))
 
 ################################################################################################################
 ### Parse CLosing Data ##########
