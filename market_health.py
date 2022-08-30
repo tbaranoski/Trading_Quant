@@ -14,6 +14,7 @@ from alpaca_trade_api.rest import REST, TimeFrame
 import datetime as dt #to get date
 import pytz #to get date
 import math #rounding purposes
+import web_socket
 #api_test = REST()
 #import alpaca_trad_api #delete
 
@@ -162,16 +163,19 @@ def get_ema_health(api):
     #test print for allignment purposes
 
     #todays close
-    end = len(SPY_EMA_C)
-    print("RIGHT NOW ON SPY IS: ", SPY_EMA_C[end-1])
+    #end = len(SPY_EMA_C)
+    #print("RIGHT NOW ON SPY IS: ", SPY_EMA_C[end-1])
 
-    print (SPY_21D_EMA)
-    print("The length of the array is: ", len(SPY_21D_EMA))
+    #print (SPY_21D_EMA)
+    #print("The length of the array is: ", len(SPY_21D_EMA))
 
 
-    print("\n\n\n")
-    print (SPY_9D_EMA)
-    print("The length of the array is: ", len(SPY_9D_EMA))
+    #print("\n\n\n")
+    #print (SPY_9D_EMA)
+    #print("The length of the array is: ", len(SPY_9D_EMA))
+
+    #Connect to websocket to get todays current data
+
 
 ################################################################################################################
 ### Parse CLosing Data ##########
