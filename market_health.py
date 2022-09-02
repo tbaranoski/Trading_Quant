@@ -14,7 +14,7 @@ from alpaca_trade_api.rest import REST, TimeFrame
 import datetime as dt #to get date
 import pytz #to get date
 import math #rounding purposes
-import web_socket
+import web_socket_daily_bar
 #api_test = REST()
 #import alpaca_trad_api #delete
 
@@ -176,6 +176,10 @@ def get_ema_health(api):
 
     #Connect to websocket to get todays current data
 
+    #Return the closing price
+
+    price = web_socket_daily_bar.get_today_daily_bar('SPY')
+    print("returned back to function!!")
 
 ################################################################################################################
 ### Parse CLosing Data ##########
