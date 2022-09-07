@@ -32,7 +32,7 @@ async def print_crypto_trade(t):
 
 #I added print_daily_bar()
 async def print_daily_bar(db):
-    print('Daily Bar for',db.get('S'), ':', db.get('c'))   
+    print('Daily Bar for',db.get('S'), ':', db.get('c'))  
     return db.get('c') 
 
 

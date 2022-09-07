@@ -10,6 +10,7 @@
 ##Distribution Day: A day where market index drops by more than .2% with greater volume than the day before. Indicates Institutional selling AKA Distribution.
 ##########################################################################################################################################################
 #import alpaca_trade_api as tradeapi
+from asyncio.windows_events import NULL
 from alpaca_trade_api.rest import REST, TimeFrame
 import datetime as dt #to get date
 import pytz #to get date
@@ -17,6 +18,9 @@ import math #rounding purposes
 import web_socket_daily_bar
 #api_test = REST()
 #import alpaca_trad_api #delete
+import time
+from datetime import datetime, timedelta
+from pytz import timezone
 
 #Constants
 PERCENT_TO_BE_DISTRIBUTION = -.2
@@ -142,6 +146,53 @@ def get_ema_health(api):
     IWM_EMA_C = parse_closes(IWM_EMA)
     IWO_EMA_C = parse_closes(IWO_EMA)
 
+    #Get Todays Data by pulling data from a shorter timeframe
+    #Start by getting the current time
+    start_parse = NULL
+    clock = api.get_clock()
+
+    temp_date = '2022-9-03'
+    today_date = api.get_calendar(start = temp_date, end= temp_date)[0]
+    print("Market closed at: ",today_date)
+
+
+
+
+
+    #timeNow = dt.datetime.now(pytz.timezone('US/Eastern'))
+    #start_time_long_emas = (timeNow - dt.timedelta(days=DATA_PERIOD)).isoformat()
+    
+
+    #If Market is Currently CLOSED, pull the last hour candle
+    if(~(clock.is_open)):
+        print("!!!!!Market CLOSED")
+        start_time_hours = (timeNow - dt.timedelta(hours=20)).isoformat()
+        print("THE START TIMEEE IS: ", start_time_hours)
+        last_few_hours_SPY = api.get_bars('SPY', TimeFrame.Hour, start = start_time_hours, end = None, limit = 20)
+
+        #Parse only candle closes
+        #last_few_hours_SPY_C = parse_closes(last_few_hours_SPY);
+        #print("\n\n\n Hour Parse")
+        #print("Most current hour close", last_few_hours_SPY_C[0])
+    #If Market is Currenty OPEN
+    else:
+        print("!!!!MARKET OPEN")
+
+
+    #SPY_TODAY = api.get_bars('SPY', TimeFrame.Hour, start = time, end = now, limit = 700) #might be "Min"
+    #QQQ_TODAY = 
+    #DIA_TODAY = 
+    #IWM_TODAY = 
+    #IWO_TODAY = 
+
+
+
+
+
+
+
+
+
     #Compute Long and Short EMA for each index
 
     SPY_21D_EMA = ema(SPY_EMA_C, LONG_EMA)
@@ -163,23 +214,24 @@ def get_ema_health(api):
     #test print for allignment purposes
 
     #todays close
-    #end = len(SPY_EMA_C)
-    #print("RIGHT NOW ON SPY IS: ", SPY_EMA_C[end-1])
+    end = len(SPY_EMA_C)
+    print("RIGHT NOW ON SPY IS: ", SPY_EMA_C[end-1])
 
-    #print (SPY_21D_EMA)
-    #print("The length of the array is: ", len(SPY_21D_EMA))
+    print ("The 21 day ema for SPY is: ", SPY_21D_EMA)
+    print("The length of the 21 day EMA array is: ", len(SPY_21D_EMA))
 
 
-    #print("\n\n\n")
-    #print (SPY_9D_EMA)
-    #print("The length of the array is: ", len(SPY_9D_EMA))
+    print("\n\n\n")
+    print (SPY_9D_EMA)
+    print("The length of the 9 day EMA array is: ", len(SPY_9D_EMA))
 
     #Connect to websocket to get todays current data
 
     #Return the closing price
 
-    price = web_socket_daily_bar.get_today_daily_bar('SPY')
-    print("returned back to function!!")
+    #price = web_socket_daily_bar.get_today_daily_bar('SPY')
+    #print("returned back to function!!")
+    return
 
 ################################################################################################################
 ### Parse CLosing Data ##########
