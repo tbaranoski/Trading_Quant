@@ -34,6 +34,34 @@ ACCOUNT_URL = "{}/v2/account".format(BASE_URL)
 ORDERS_URL = "{}/v2/orders".format(BASE_URL)
 HEADERS = {'APCA-API-KEY-ID': API_KEY, 'APCA-API-SECRET-KEY': SECRET_KEY}
 
+#Create stock class to store the key data that will be used in the trading strategy.
+#This will allow us to choose different strategies to use for different stocks
+class Stock:
+    def __init__(self, name, current_price_estimate, EMA_21, EMA_9, distribution_Short_len, distribution_Long_len, strategy):
+        self.name = name
+        self.current_price_estimate = current_price_estimate        
+        self.EMA_21 = EMA_21
+        self.EMA_9 = EMA_9
+        self.distribution_Short_len = distribution_Short_len
+        self.distribution_Long_len = distribution_Long_len
+        self.strategy = strategy
+
+        #Calculate EMA score
+        #IF Over both short and long EMA then score is 2/2 BULLISH
+        if(self.current_price_estimate > self.EMA_21) and (self.current_price_estimate > self.EMA_9):
+            self.EMA_SCORE = 2
+
+        #If Over 21 EMA, but below 9 EMA then score is 1/2 BULLISH
+        if(self.current_price_estimate > self.EMA_21) and (self.current_price_estimate < self.EMA_9):
+            self.EMA_SCORE= 1
+
+        #If Under 21 EMA then SCORE 0 then score is 0/2 BULLISH
+        if(self.current_price_estimate < self.EMA_21):
+            self.EMA_SCORE = 0
+
+
+############################################################################################################
+############################################################################################################
 
 def get_account(): 
     r = requests.get(ACCOUNT_URL, headers = HEADERS)

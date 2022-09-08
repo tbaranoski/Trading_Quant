@@ -146,58 +146,74 @@ def get_ema_health(api):
     IWM_EMA_C = parse_closes(IWM_EMA)
     IWO_EMA_C = parse_closes(IWO_EMA)
 
+    ##########################################################################
+    ##########################################################################
     #Get Todays Data by pulling data from a shorter timeframe
     #Start by getting the current time
     start_parse = NULL
     clock = api.get_clock()
+    SPY_NOW = 0
 
     temp_date = '2022-9-03'
     today_date = api.get_calendar(start = temp_date, end = temp_date)[0]
     print("Market closed at: ",today_date.close)
 
 
+    #If Market is Currently CLOSED OR OPEN, pull the last hour candle
 
-
-
-    #timeNow = dt.datetime.now(pytz.timezone('US/Eastern'))
-    #start_time_long_emas = (timeNow - dt.timedelta(days=DATA_PERIOD)).isoformat()
-    
-
-    #If Market is Currently CLOSED, pull the last hour candle
-    if(~(clock.is_open)):
-        print("!!!!!Market CLOSED")
-        start_time_hours = (timeNow - dt.timedelta(hours=20)).isoformat()
-        print("THE START TIMEEE IS: ", start_time_hours)
-        last_few_hours_SPY = api.get_bars('SPY', TimeFrame.Hour, start = start_time_hours, end = None, limit = 20)
+    print("!!!!!Market CLOSED")
+    start_time_hours = (timeNow - dt.timedelta(hours=20)).isoformat()
+    last_few_hours_SPY = api.get_bars('SPY', TimeFrame.Hour, start = start_time_hours, end = None, limit = 20)
+    last_few_hours_QQQ = api.get_bars('QQQ', TimeFrame.Hour, start = start_time_hours, end = None, limit = 20)
+    last_few_hours_DIA = api.get_bars('DIA', TimeFrame.Hour, start = start_time_hours, end = None, limit = 20)
+    last_few_hours_IWM = api.get_bars('IWM', TimeFrame.Hour, start = start_time_hours, end = None, limit = 20)
+    last_few_hours_IWO = api.get_bars('IWO', TimeFrame.Hour, start = start_time_hours, end = None, limit = 20)
         
-        print("")
-        #Parse only candle closes
-        last_few_hours_SPY_C = parse_closes(last_few_hours_SPY);
-        print("\n\n\n Hour Parse")
-        len_temp = len(last_few_hours_SPY)
-        print("@@@@@@@@@@@@@@: ", len_temp)
-        print("Most current hour close", last_few_hours_SPY_C[len_temp - 2])
-    #If Market is Currenty OPEN
-    else:
-        print("!!!!MARKET OPEN")
+    #Parse only candle closes
+    last_few_hours_SPY_C = parse_closes(last_few_hours_SPY);
+    last_few_hours_QQQ_C = parse_closes(last_few_hours_QQQ);
+    last_few_hours_DIA_C = parse_closes(last_few_hours_DIA);
+    last_few_hours_IWM_C = parse_closes(last_few_hours_IWM);
+    last_few_hours_IWO_C = parse_closes(last_few_hours_IWO);
 
 
-    #SPY_TODAY = api.get_bars('SPY', TimeFrame.Hour, start = time, end = now, limit = 700) #might be "Min"
-    #QQQ_TODAY = 
-    #DIA_TODAY = 
-    #IWM_TODAY = 
-    #IWO_TODAY = 
+    #Test Print
+    len_temp = len(last_few_hours_SPY)
+    SPY_NOW = last_few_hours_SPY_C[len_temp - 2]
+   
+    len_temp = len(last_few_hours_QQQ)
+    QQQ_NOW = last_few_hours_QQQ_C[len_temp - 2]
+    
+    len_temp = len(last_few_hours_DIA)
+    DIA_NOW = last_few_hours_DIA_C[len_temp - 2]
 
+    len_temp = len(last_few_hours_IWM)
+    IWM_NOW = last_few_hours_IWM_C[len_temp - 2]
 
+    len_temp = len(last_few_hours_IWO)
+    IWO_NOW = last_few_hours_IWO_C[len_temp - 2]
 
+    #Tets print
+    print("Length is:", len(last_few_hours_SPY))
+    print("Length is:", len(last_few_hours_QQQ))
+    print("Length is:", len(last_few_hours_DIA))
+    print("Length is:", len(last_few_hours_IWM))
+    print("Length is:", len(last_few_hours_IWO))
 
+    print("SPY NOW: ", SPY_NOW)
+    print("QQQ NOW: ", QQQ_NOW)
+    print("DIA NOW: ", DIA_NOW)
+    print("IWM NOW: ", IWM_NOW)
+    print("IWO NOW: ", IWO_NOW)
 
-
-
-
+   #append to <index_name>_C
+    SPY_EMA_C.append(SPY_NOW)
+    QQQ_EMA_C.append(QQQ_NOW)
+    DIA_EMA_C.append(DIA_NOW)
+    IWM_EMA_C.append(IWM_NOW)
+    IWO_EMA_C.append(IWO_NOW)
 
     #Compute Long and Short EMA for each index
-
     SPY_21D_EMA = ema(SPY_EMA_C, LONG_EMA)
     SPY_9D_EMA = ema(SPY_EMA_C, SHORT_EMA)
 
@@ -213,28 +229,15 @@ def get_ema_health(api):
     IWO_21D_EMA = ema(IWO_EMA_C, LONG_EMA)
     IWO_9D_EMA = ema(IWO_EMA_C, SHORT_EMA)
 
-
-    #test print for allignment purposes
-
-    #todays close
-    end = len(SPY_EMA_C)
-    print("RIGHT NOW ON SPY IS: ", SPY_EMA_C[end-1])
-
-    print ("The 21 day ema for SPY is: ", SPY_21D_EMA)
-    print("The length of the 21 day EMA array is: ", len(SPY_21D_EMA))
-
-
-    print("\n\n\n")
-    print (SPY_9D_EMA)
-    print("The length of the 9 day EMA array is: ", len(SPY_9D_EMA))
+    #Return the SHORT AND LONG EMA for each index
+    INDEX_EMAS = [SPY_21D_EMA, SPY_9D_EMA][[QQQ_21D_EMA, QQQ_9D_EMA][DIA_21D_EMA, DIA_9D_EMA][IWM_21D_EMA, IWM_9D_EMA][IWO_21D_EMA, IWO_9D_EMA]]
 
     #Connect to websocket to get todays current data
-
-    #Return the closing price
+     #Return the closing price
 
     #price = web_socket_daily_bar.get_today_daily_bar('SPY')
     #print("returned back to function!!")
-    return
+    return INDEX_EMAS
 
 ################################################################################################################
 ### Parse CLosing Data ##########
