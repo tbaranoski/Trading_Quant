@@ -152,8 +152,8 @@ def get_ema_health(api):
     clock = api.get_clock()
 
     temp_date = '2022-9-03'
-    today_date = api.get_calendar(start = temp_date, end= temp_date)[0]
-    print("Market closed at: ",today_date)
+    today_date = api.get_calendar(start = temp_date, end = temp_date)[0]
+    print("Market closed at: ",today_date.close)
 
 
 
@@ -169,11 +169,14 @@ def get_ema_health(api):
         start_time_hours = (timeNow - dt.timedelta(hours=20)).isoformat()
         print("THE START TIMEEE IS: ", start_time_hours)
         last_few_hours_SPY = api.get_bars('SPY', TimeFrame.Hour, start = start_time_hours, end = None, limit = 20)
-
+        
+        print("")
         #Parse only candle closes
-        #last_few_hours_SPY_C = parse_closes(last_few_hours_SPY);
-        #print("\n\n\n Hour Parse")
-        #print("Most current hour close", last_few_hours_SPY_C[0])
+        last_few_hours_SPY_C = parse_closes(last_few_hours_SPY);
+        print("\n\n\n Hour Parse")
+        len_temp = len(last_few_hours_SPY)
+        print("@@@@@@@@@@@@@@: ", len_temp)
+        print("Most current hour close", last_few_hours_SPY_C[len_temp - 2])
     #If Market is Currenty OPEN
     else:
         print("!!!!MARKET OPEN")
