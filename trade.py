@@ -101,7 +101,9 @@ def main():
 
     #print ("New TEST: \n\n\n")
     distribution_array_indexes = market_health.get_distribution_health(api)
-    market_health.get_ema_health(api)
+    SPY_TEST = market_health.get_ema_health(api)
+
+    print("MAIN FUNCTION: SPY PRINTING: ", SPY_TEST[7])
 
 
 main()

@@ -230,7 +230,7 @@ def get_ema_health(api):
     IWO_9D_EMA = ema(IWO_EMA_C, SHORT_EMA)
 
     #Return the SHORT AND LONG EMA for each index
-    INDEX_EMAS = [SPY_21D_EMA, SPY_9D_EMA][[QQQ_21D_EMA, QQQ_9D_EMA][DIA_21D_EMA, DIA_9D_EMA][IWM_21D_EMA, IWM_9D_EMA][IWO_21D_EMA, IWO_9D_EMA]]
+    INDEX_EMAS = [SPY_21D_EMA[len(SPY_21D_EMA) - 1], [SPY_9D_EMA[len(SPY_9D_EMA) - 1]], QQQ_21D_EMA[len(QQQ_21D_EMA) - 1], [QQQ_9D_EMA[len(QQQ_9D_EMA) - 1]] , DIA_21D_EMA[len(DIA_21D_EMA) - 1], [DIA_9D_EMA[len(DIA_9D_EMA) - 1]], IWM_21D_EMA[len(IWM_21D_EMA) - 1], [IWM_9D_EMA[len(IWM_9D_EMA) - 1]], IWO_21D_EMA[len(IWO_21D_EMA) - 1], [IWO_9D_EMA[len(IWO_9D_EMA) - 1]]]
 
     #Connect to websocket to get todays current data
      #Return the closing price
