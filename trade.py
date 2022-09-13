@@ -1,5 +1,6 @@
 #https://forum.alpaca.markets/t/get-bars-vs-get-barset/8127/6 -----Reference for get_bars
 
+from pickle import NONE
 from sys import api_version
 import requests , json
 
@@ -34,10 +35,11 @@ ACCOUNT_URL = "{}/v2/account".format(BASE_URL)
 ORDERS_URL = "{}/v2/orders".format(BASE_URL)
 HEADERS = {'APCA-API-KEY-ID': API_KEY, 'APCA-API-SECRET-KEY': SECRET_KEY}
 
+
 #Create stock class to store the key data that will be used in the trading strategy.
 #This will allow us to choose different strategies to use for different stocks
 class Stock:
-    def __init__(self, name, current_price_estimate, EMA_21, EMA_9, distribution_Short_len, distribution_Long_len, strategy):
+    def __init__(self, name, current_price_estimate = NONE, EMA_21 = None, EMA_9 = None, distribution_Short_len = None, distribution_Long_len = None, strategy = None):
         self.name = name
         self.current_price_estimate = current_price_estimate        
         self.EMA_21 = EMA_21
@@ -48,17 +50,22 @@ class Stock:
 
         #Calculate EMA score
         #IF Over both short and long EMA then score is 2/2 BULLISH
-        if(self.current_price_estimate > self.EMA_21) and (self.current_price_estimate > self.EMA_9):
-            self.EMA_SCORE = 2
 
-        #If Over 21 EMA, but below 9 EMA then score is 1/2 BULLISH
-        if(self.current_price_estimate > self.EMA_21) and (self.current_price_estimate < self.EMA_9):
-            self.EMA_SCORE= 1
+        #Try Except block in case default value of None is used
+        try:
+            if(self.current_price_estimate > self.EMA_21) and (self.current_price_estimate > self.EMA_9):
+                self.EMA_SCORE = 2
 
-        #If Under 21 EMA then SCORE 0 then score is 0/2 BULLISH
-        if(self.current_price_estimate < self.EMA_21):
-            self.EMA_SCORE = 0
+            #If Over 21 EMA, but below 9 EMA then score is 1/2 BULLISH
+            if(self.current_price_estimate > self.EMA_21) and (self.current_price_estimate < self.EMA_9):
+                self.EMA_SCORE= 1
 
+            #If Under 21 EMA then SCORE 0 then score is 0/2 BULLISH
+            if(self.current_price_estimate < self.EMA_21):
+                self.EMA_SCORE = 0
+        except: 
+            print("block ran..!!!")
+            self.EMA_SCORE = None
 
 ############################################################################################################
 ############################################################################################################
@@ -104,6 +111,9 @@ def main():
     SPY_TEST = market_health.get_ema_health(api)
 
     print("MAIN FUNCTION: SPY PRINTING: ", SPY_TEST[7])
+
+    #Test making SPY object
+    SPY_object = Stock('SPY')
 
 
 main()
