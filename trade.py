@@ -35,10 +35,23 @@ ACCOUNT_URL = "{}/v2/account".format(BASE_URL)
 ORDERS_URL = "{}/v2/orders".format(BASE_URL)
 HEADERS = {'APCA-API-KEY-ID': API_KEY, 'APCA-API-SECRET-KEY': SECRET_KEY}
 
+############################################################################################################
+############################################################################################################
+    #Create Group Object (Parent Class) which will be used to store groups of different stocks to better performe quantitative analysis##### 
+class Group:
+    def __init__(self, stock_objects_array = [], name_group = None, sector = None, description = None):
+        self.stock_objects_array = stock_objects_array
+        self.name_group = name_group
+        self.sector = sector
+        self.description = description
+        try:
+            self.num_in_group = len(stock_objects_array)
+        except:
+            self.num_in_group = 0
 
-#Create stock class to store the key data that will be used in the trading strategy.
+#Create stock class (Child Class) to store the key data that will be used in the trading strategy.
 #This will allow us to choose different strategies to use for different stocks
-class Stock:
+class Stock(Group):
     def __init__(self, name, current_price_estimate = NONE, EMA_21 = None, EMA_9 = None, distribution_Short_len = None, distribution_Long_len = None, strategy = None):
         self.name = name
         self.current_price_estimate = current_price_estimate        
@@ -64,7 +77,6 @@ class Stock:
             if(self.current_price_estimate < self.EMA_21):
                 self.EMA_SCORE = 0
         except: 
-            print("block ran..!!!")
             self.EMA_SCORE = None
 
 ############################################################################################################
@@ -114,6 +126,11 @@ def main():
 
     #Test making SPY object
     SPY_object = Stock('SPY')
+    QQQ_object = Stock('QQQ')
 
+    #Test Making Group object
+    #Tets making blank Group first
+    test_group = Group([SPY_object, QQQ_object])
+    print(test_group.num_in_group)
 
 main()
