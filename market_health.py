@@ -22,6 +22,8 @@ import web_socket_daily_bar
 import time
 from datetime import datetime, timedelta
 from pytz import timezone
+import logging #added for logging purposes
+import logging.handlers #added for logging purposes
 
 #Constants
 PERCENT_TO_BE_DISTRIBUTION = -.2
@@ -138,7 +140,7 @@ def get_ema_health(api, group):
 
         #Get Most Current Hourly Close and append to dataset
         len_temp = len(last_few_hours_temp_C)
-        temp_price_now = last_few_hours_temp_C[len_temp - 2]
+        temp_price_now = last_few_hours_temp_C[len_temp - 1]
         temp_EMA_C.append(temp_price_now)
 
         #Compute Long and Short EMA arrays for each index and populate stock object with current EMA data
@@ -201,3 +203,42 @@ def ema(s, n):
 
     return ema
     ################################################################################################################
+    ################################################################################################################
+
+def get_price_estimate(api, group):
+
+    # Check if the market is open now. Code From Reference
+    #Reference: https://alpaca.markets/deprecated/docs/api-documentation/how-to/market-hours/#:~:text=See%20if%20the%20Market%20is,closed%20on%20a%20particular%20date.
+    clock = api.get_clock()
+    timeNow = dt.datetime.now(pytz.timezone('US/Eastern'))
+
+    #Determine if market is OPEN OR CLOSES
+    #IF market OPEN, pull most recent minute candles
+    if(clock.is_open):
+        logging.info("Algorithm Determined Market is OPEN  from:get_price_estimate()")
+
+        #Itterate through the list of stocks in group and get most recent MINUTE close. Store attribute as current_price_estimate 
+        for stock in group.stock_objects_array:
+            start_time_hours = (timeNow - dt.timedelta(hours=1)).isoformat()
+
+            last_few_hours_temp = api.get_bars(stock.name, TimeFrame.Min, start = start_time_hours, end = None, limit = 120)
+            last_few_hours_temp_C = parse_closes(last_few_hours_temp)
+            len_temp = len(last_few_hours_temp_C)        
+            stock.current_price_estimate = last_few_hours_temp_C[len_temp - 1]
+
+            del start_time_hours, last_few_hours_temp, last_few_hours_temp_C, len_temp
+            
+    #IF market CLOSED, pull most recent hour candles. Make sure if it is Sunday we can still pull Friday's data
+    else:
+        logging.info("Algorithm Determined Market is CLOSED  from:get_price_estimate()")
+        
+        #Itterate through the list of stocks in group and get most recent HOUR close. Store attribute as current_price_estimate 
+        for stock in group.stock_objects_array:
+            start_time_hours = (timeNow - dt.timedelta(hours=60)).isoformat()
+
+            last_few_hours_temp = api.get_bars(stock.name, TimeFrame.Hour, start = start_time_hours, end = None, limit = 60)
+            last_few_hours_temp_C = parse_closes(last_few_hours_temp)
+            len_temp = len(last_few_hours_temp_C)        
+            stock.current_price_estimate = last_few_hours_temp_C[len_temp - 1]
+
+            del start_time_hours, last_few_hours_temp, last_few_hours_temp_C, len_temp

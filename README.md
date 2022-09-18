@@ -454,3 +454,5 @@ welcomed.
 
 ## Added Dependencies
 pip install mysql-connector
+
+## Using Logger

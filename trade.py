@@ -37,6 +37,9 @@ ACCOUNT_URL = "{}/v2/account".format(BASE_URL)
 ORDERS_URL = "{}/v2/orders".format(BASE_URL)
 HEADERS = {'APCA-API-KEY-ID': API_KEY, 'APCA-API-SECRET-KEY': SECRET_KEY}
 
+#Set log level to INFO to debug (WARNING is default)
+logging.basicConfig(level=logging.WARNING)
+
 ############################################################################################################
 ############################################################################################################
     #Create Group Object (Parent Class) which will be used to store groups of different stocks to better performe quantitative analysis##### 
@@ -124,12 +127,10 @@ class Stock(Group):
 
         #Try to print attributes if populated
         try:
-            print('{:<10} {:^15} {:^20} {:^20} {:^20} {:^30}'.format(str(self.name), str(self.current_price_estimate), round(self.EMA_21, 2), round(self.EMA_9, 2), self.distribution_Short_len, self.distribution_Long_len))
+            print('{:<10} {:^15} {:^20} {:^20} {:^20} {:^30}'.format(str(self.name), str(self.current_price_estimate), round(self.EMA_21, 2), round(self.EMA_9, 2), self.distribution_Long_len, self.distribution_Short_len))
 
         except Exception as Argument:
             logging.exception("Error occured printing stock attributes. (Stock Attributes may not be populated)")
-
-
 
 ############################################################################################################
 ############################################################################################################
@@ -182,6 +183,7 @@ def main():
 
     market_health.get_distribution_health(api, index_group)
     market_health.get_ema_health(api, index_group)
+    market_health.get_price_estimate(api, index_group)
 
     #print("TEST FROM MAIN FUNCTION", index_group.stock_objects_array[3].name, index_group.stock_objects_array[3].EMA_21)
 
