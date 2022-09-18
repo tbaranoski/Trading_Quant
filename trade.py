@@ -122,15 +122,15 @@ def main():
     distribution_array_indexes = market_health.get_distribution_health(api)
     SPY_TEST = market_health.get_ema_health(api)
 
-    print("MAIN FUNCTION: SPY PRINTING: ", SPY_TEST[7])
+    #print("MAIN FUNCTION: SPY PRINTING: ", SPY_TEST[7])
 
     #Test making SPY object
-    SPY_object = Stock('SPY')
-    QQQ_object = Stock('QQQ')
+    #SPY_object = Stock('SPY')
+    #QQQ_object = Stock('QQQ')
 
     #Test Making Group object
     #Tets making blank Group first
-    test_group = Group([SPY_object, QQQ_object])
-    print(test_group.num_in_group)
+    #test_group = Group([SPY_object, QQQ_object])
+    #print(test_group.num_in_group)
 
 main()

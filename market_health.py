@@ -162,12 +162,12 @@ def get_ema_health(api):
     #If Market is Currently CLOSED OR OPEN, pull the last hour candle
 
     print("!!!!!Market CLOSED")
-    start_time_hours = (timeNow - dt.timedelta(hours=20)).isoformat()
-    last_few_hours_SPY = api.get_bars('SPY', TimeFrame.Hour, start = start_time_hours, end = None, limit = 20)
-    last_few_hours_QQQ = api.get_bars('QQQ', TimeFrame.Hour, start = start_time_hours, end = None, limit = 20)
-    last_few_hours_DIA = api.get_bars('DIA', TimeFrame.Hour, start = start_time_hours, end = None, limit = 20)
-    last_few_hours_IWM = api.get_bars('IWM', TimeFrame.Hour, start = start_time_hours, end = None, limit = 20)
-    last_few_hours_IWO = api.get_bars('IWO', TimeFrame.Hour, start = start_time_hours, end = None, limit = 20)
+    start_time_hours = (timeNow - dt.timedelta(hours=60)).isoformat()
+    last_few_hours_SPY = api.get_bars('SPY', TimeFrame.Hour, start = start_time_hours, end = None, limit = 60)
+    last_few_hours_QQQ = api.get_bars('QQQ', TimeFrame.Hour, start = start_time_hours, end = None, limit = 60)
+    last_few_hours_DIA = api.get_bars('DIA', TimeFrame.Hour, start = start_time_hours, end = None, limit = 60)
+    last_few_hours_IWM = api.get_bars('IWM', TimeFrame.Hour, start = start_time_hours, end = None, limit = 60)
+    last_few_hours_IWO = api.get_bars('IWO', TimeFrame.Hour, start = start_time_hours, end = None, limit = 60)
         
     #Parse only candle closes
     last_few_hours_SPY_C = parse_closes(last_few_hours_SPY);
@@ -177,20 +177,26 @@ def get_ema_health(api):
     last_few_hours_IWO_C = parse_closes(last_few_hours_IWO);
 
 
+    #TESTTTT
+    print("SEE HEREEEE")
+    print(last_few_hours_SPY_C)
+    print("The length is: ", last_few_hours_SPY_C)
+
+
     #Test Print
-    len_temp = len(last_few_hours_SPY)
+    len_temp = len(last_few_hours_SPY_C)
     SPY_NOW = last_few_hours_SPY_C[len_temp - 2]
    
-    len_temp = len(last_few_hours_QQQ)
+    len_temp = len(last_few_hours_QQQ_C)
     QQQ_NOW = last_few_hours_QQQ_C[len_temp - 2]
     
-    len_temp = len(last_few_hours_DIA)
+    len_temp = len(last_few_hours_DIA_C)
     DIA_NOW = last_few_hours_DIA_C[len_temp - 2]
 
-    len_temp = len(last_few_hours_IWM)
+    len_temp = len(last_few_hours_IWM_C)
     IWM_NOW = last_few_hours_IWM_C[len_temp - 2]
 
-    len_temp = len(last_few_hours_IWO)
+    len_temp = len(last_few_hours_IWO_C)
     IWO_NOW = last_few_hours_IWO_C[len_temp - 2]
 
     #Tets print
