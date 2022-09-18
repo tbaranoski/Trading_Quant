@@ -2,6 +2,7 @@
 
 from pickle import NONE
 from sys import api_version
+from unicodedata import name
 import requests , json
 
 #Helper Functions and filepaths
@@ -40,6 +41,7 @@ HEADERS = {'APCA-API-KEY-ID': API_KEY, 'APCA-API-SECRET-KEY': SECRET_KEY}
     #Create Group Object (Parent Class) which will be used to store groups of different stocks to better performe quantitative analysis##### 
 class Group:
     def __init__(self, stock_objects_array = [], name_group = None, sector = None, description = None):
+
         self.stock_objects_array = stock_objects_array
         self.name_group = name_group
         self.sector = sector
@@ -49,10 +51,31 @@ class Group:
         except:
             self.num_in_group = 0
 
+    #Create a Group given a list of tickers
+    def create_group(self, ticker_list, name_group):
+
+        #Create Stock Object and populate group
+        for name in ticker_list:    
+            temp_stock_object = Stock(name) 
+            self.stock_objects_array.append(temp_stock_object)
+
+        #Name the group if name given
+        try:
+            self.name_group = name_group
+        except:
+            pass
+
+    def print_group(self):
+
+        print("\n\n Stocks in the ", self.name_group, " group are: \n")
+        for stock_object in self.stock_objects_array:
+            print(stock_object.name)
+
+
 #Create stock class (Child Class) to store the key data that will be used in the trading strategy.
 #This will allow us to choose different strategies to use for different stocks
 class Stock(Group):
-    def __init__(self, name, current_price_estimate = NONE, EMA_21 = None, EMA_9 = None, distribution_Short_len = None, distribution_Long_len = None, strategy = None):
+    def __init__(self, name, current_price_estimate = None, EMA_21 = None, EMA_9 = None, distribution_Short_len = None, distribution_Long_len = None, strategy = None):
         self.name = name
         self.current_price_estimate = current_price_estimate        
         self.EMA_21 = EMA_21
@@ -107,6 +130,10 @@ def get_orders():
 
 
 def main():
+    ###################################################################
+    #Modify the lists below...
+    index_names_array = ['SPY', 'QQQ', 'IWM', 'IWO', 'DIA']
+
 
     #Creat REST object by pasing API KEYS
     api = tradeapi.REST(API_KEY, SECRET_KEY, BASE_URL, api_version='v2')
@@ -114,23 +141,25 @@ def main():
     #print (account)
 
 
+    #Create Index Group
+    index_group = Group()
+    index_group.create_group(index_names_array, name_group = "Indexes")
+    index_group.print_group()
+
     #print ("test!!!")
     #orders = get_orders()
     #print(orders)
-
     #print ("New TEST: \n\n\n")
-    distribution_array_indexes = market_health.get_distribution_health(api)
-    SPY_TEST = market_health.get_ema_health(api)
 
-    #print("MAIN FUNCTION: SPY PRINTING: ", SPY_TEST[7])
+    distribution_array_indexes = market_health.get_distribution_health(api, index_group)
+    SPY_TEST = market_health.get_ema_health(api, index_group)
 
-    #Test making SPY object
-    #SPY_object = Stock('SPY')
-    #QQQ_object = Stock('QQQ')
+    print("TEST FROM MAIN FUNCTION", index_group.stock_objects_array[3].name, index_group.stock_objects_array[3].EMA_21)
+    
 
-    #Test Making Group object
-    #Tets making blank Group first
-    #test_group = Group([SPY_object, QQQ_object])
-    #print(test_group.num_in_group)
+
+
+    #Populate index_group
+
 
 main()

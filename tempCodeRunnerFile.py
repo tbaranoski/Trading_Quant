@@ -1,0 +1,1 @@
+print("TEST FROM MAIN FUNCTION", index_group.stock_objects_array[3].name, index_group.stock_objects_array[3].distribution_Short_len)

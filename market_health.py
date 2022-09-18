@@ -11,6 +11,7 @@
 ##########################################################################################################################################################
 #import alpaca_trade_api as tradeapi
 from asyncio.windows_events import NULL
+from unicodedata import name
 from alpaca_trade_api.rest import REST, TimeFrame
 import datetime as dt #to get date
 import pytz #to get date
@@ -77,7 +78,7 @@ def get_Distribution_DAY_COUNT(NUM_DAYS, TICKER_D_BARS):
     return distribution_days
 #############################################################################################################################################
 #Main function in file
-def get_distribution_health(api):
+def get_distribution_health(api, group):
     
     ###################################################################################
     ###################################################################################
@@ -90,33 +91,27 @@ def get_distribution_health(api):
     #Reference https://forum.alpaca.markets/t/get-bars-vs-get-barset/8127/6
     timeNow = dt.datetime.now(pytz.timezone('US/Eastern'))
     start_time_long_distribution = timeNow - dt.timedelta(days=LONG_DISTRIBUTION)
+    
+    #for every stock in the group, calculate Distribution Day Count. Used primarilly For Major Indexes ($SPY, $QQQ, $DIA, $IWO, $IWM)
+    # over a longer period (currentlly lsast 25 days) and over a shorter period (last 7 days)
+    for stock in group.stock_objects_array:
+        print("name******* :", stock.name)
+        
+        #Get DAILY BARS for stock
+        temp_D_BARSET = api.get_bars(stock.name, TimeFrame.Day, start = start_time_long_distribution.isoformat(), end = None, limit = LONG_DISTRIBUTION)
 
-    #Get DAILY BARS for SPY and QQQ and DIA, IWO, and IWM
-    SPY_D_BARSET = api.get_bars('SPY', TimeFrame.Day, start = start_time_long_distribution.isoformat(), end = None, limit = LONG_DISTRIBUTION)
-    QQQ_D_BARSET = api.get_bars('QQQ', TimeFrame.Day, start = start_time_long_distribution.isoformat(), end = None, limit = LONG_DISTRIBUTION)
-    DIA_D_BARSET = api.get_bars('DIA', TimeFrame.Day, start = start_time_long_distribution.isoformat(), end = None, limit = LONG_DISTRIBUTION)
-    IWO_D_BARSET = api.get_bars('IWO', TimeFrame.Day, start = start_time_long_distribution.isoformat(), end = None, limit = LONG_DISTRIBUTION)
-    IWM_D_BARSET = api.get_bars('IWM', TimeFrame.Day, start = start_time_long_distribution.isoformat(), end = None, limit = LONG_DISTRIBUTION)
+        # Calculate Short and Long Distribution Day Count
+        # Populate Stock object with the Long Distribution and Short Distribution Count
+        stock.distribution_Long_len = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION_NUMBER, temp_D_BARSET)
+        stock.distribution_Short_len = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION_NUMBER, temp_D_BARSET)
+    
+        #Clear Temp Arrays
+        temp_D_BARSET = []        
 
-    #Calculate distribution days
-    SPY_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION_NUMBER, SPY_D_BARSET)
-    SPY_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION_NUMBER, SPY_D_BARSET)
-    QQQ_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION_NUMBER, QQQ_D_BARSET)
-    QQQ_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION_NUMBER, QQQ_D_BARSET)
-    DIA_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION_NUMBER, DIA_D_BARSET)
-    DIA_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION_NUMBER, DIA_D_BARSET)
-    IWO_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION_NUMBER, IWO_D_BARSET)
-    IWO_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION_NUMBER, IWO_D_BARSET)
-    IWM_DIST_LONG = get_Distribution_DAY_COUNT(LONG_DISTRIBUTION_NUMBER, IWM_D_BARSET)
-    IWM_DIST_SHORT = get_Distribution_DAY_COUNT(SHORT_DISTRIBUTION_NUMBER, IWM_D_BARSET)
-
-    distribution_array_indexes = [SPY_DIST_LONG,SPY_DIST_SHORT,QQQ_DIST_LONG,QQQ_DIST_SHORT,DIA_DIST_LONG,DIA_DIST_SHORT,IWO_DIST_LONG,IWO_DIST_SHORT,IWM_DIST_LONG,IWM_DIST_SHORT]
-    print_distribution_day(distribution_array_indexes)
-
-    return distribution_array_indexes
-
-#Determine if Indexes are above 9ema AND 21 ema on DAILY CHART
-def get_ema_health(api):
+##############################################################################################################################    
+##############################################################################################################################
+#GET 9ema AND 21 ema on DAILY CHART
+def get_ema_health(api, group):
 
     #Constants
     SHORT_EMA = 9
@@ -127,125 +122,39 @@ def get_ema_health(api):
     DATA_PERIOD = math.ceil((((LONG_EMA * 2) * (7/5)) + 10))
     timeNow = dt.datetime.now(pytz.timezone('US/Eastern'))
     start_time_long_emas = timeNow - dt.timedelta(days=DATA_PERIOD)
-
-    #Get Daily bar data
-    SPY_EMA = api.get_bars('SPY', TimeFrame.Day, start = start_time_long_emas.isoformat(), end = None, limit = DATA_PERIOD)
-    QQQ_EMA = api.get_bars('QQQ', TimeFrame.Day, start = start_time_long_emas.isoformat(), end = None, limit = DATA_PERIOD)
-    DIA_EMA = api.get_bars('DIA', TimeFrame.Day, start = start_time_long_emas.isoformat(), end = None, limit = DATA_PERIOD)
-    IWM_EMA = api.get_bars('IWM', TimeFrame.Day, start = start_time_long_emas.isoformat(), end = None, limit = DATA_PERIOD)
-    IWO_EMA = api.get_bars('IWO', TimeFrame.Day, start = start_time_long_emas.isoformat(), end = None, limit = DATA_PERIOD)
-    
-    #Test print to make sure data is not messed up
-    #print_Close(DATA_PERIOD, SPY_EMA)
-
-    #Compute Exponential average using ema funciton. Pass in closing values
-    #Start by parsing only the candle closes
-    SPY_EMA_C = parse_closes(SPY_EMA)
-    QQQ_EMA_C = parse_closes(QQQ_EMA)
-    DIA_EMA_C = parse_closes(DIA_EMA)
-    IWM_EMA_C = parse_closes(IWM_EMA)
-    IWO_EMA_C = parse_closes(IWO_EMA)
-
-    ##########################################################################
-    ##########################################################################
-    #Get Todays Data by pulling data from a shorter timeframe
-    #Start by getting the current time
-    start_parse = NULL
-    clock = api.get_clock()
-    SPY_NOW = 0
-
-    temp_date = '2022-9-03'
-    today_date = api.get_calendar(start = temp_date, end = temp_date)[0]
-    print("Market closed at: ",today_date.close)
-
-
-    #If Market is Currently CLOSED OR OPEN, pull the last hour candle
-
-    print("!!!!!Market CLOSED")
     start_time_hours = (timeNow - dt.timedelta(hours=60)).isoformat()
-    last_few_hours_SPY = api.get_bars('SPY', TimeFrame.Hour, start = start_time_hours, end = None, limit = 60)
-    last_few_hours_QQQ = api.get_bars('QQQ', TimeFrame.Hour, start = start_time_hours, end = None, limit = 60)
-    last_few_hours_DIA = api.get_bars('DIA', TimeFrame.Hour, start = start_time_hours, end = None, limit = 60)
-    last_few_hours_IWM = api.get_bars('IWM', TimeFrame.Hour, start = start_time_hours, end = None, limit = 60)
-    last_few_hours_IWO = api.get_bars('IWO', TimeFrame.Hour, start = start_time_hours, end = None, limit = 60)
-        
-    #Parse only candle closes
-    last_few_hours_SPY_C = parse_closes(last_few_hours_SPY);
-    last_few_hours_QQQ_C = parse_closes(last_few_hours_QQQ);
-    last_few_hours_DIA_C = parse_closes(last_few_hours_DIA);
-    last_few_hours_IWM_C = parse_closes(last_few_hours_IWM);
-    last_few_hours_IWO_C = parse_closes(last_few_hours_IWO);
 
-
-    #TESTTTT
-    print("SEE HEREEEE")
-    print(last_few_hours_SPY_C)
-    print("The length is: ", last_few_hours_SPY_C)
-
-
-    #Test Print
-    len_temp = len(last_few_hours_SPY_C)
-    SPY_NOW = last_few_hours_SPY_C[len_temp - 2]
-   
-    len_temp = len(last_few_hours_QQQ_C)
-    QQQ_NOW = last_few_hours_QQQ_C[len_temp - 2]
     
-    len_temp = len(last_few_hours_DIA_C)
-    DIA_NOW = last_few_hours_DIA_C[len_temp - 2]
+    #Itterate through the list of stocks in group and get EMA health
+    for stock in group.stock_objects_array:
 
-    len_temp = len(last_few_hours_IWM_C)
-    IWM_NOW = last_few_hours_IWM_C[len_temp - 2]
+        #Get Daily bar data then parse only the Closes
+        temp_D_BARSET = api.get_bars(stock.name, TimeFrame.Day, start = start_time_long_emas.isoformat(), end = None, limit = DATA_PERIOD)
+        temp_EMA_C = parse_closes(temp_D_BARSET)
 
-    len_temp = len(last_few_hours_IWO_C)
-    IWO_NOW = last_few_hours_IWO_C[len_temp - 2]
+        #Get an Estimate of the Current Price Right Now (AKA Todays current close) and parse only candle closes
+        last_few_hours_temp = api.get_bars(stock.name, TimeFrame.Hour, start = start_time_hours, end = None, limit = 60)
+        last_few_hours_temp_C = parse_closes(last_few_hours_temp)
 
-    #Tets print
-    print("Length is:", len(last_few_hours_SPY))
-    print("Length is:", len(last_few_hours_QQQ))
-    print("Length is:", len(last_few_hours_DIA))
-    print("Length is:", len(last_few_hours_IWM))
-    print("Length is:", len(last_few_hours_IWO))
+        #Get Most Current Hourly Close and append to dataset
+        len_temp = len(last_few_hours_temp_C)
+        temp_price_now = last_few_hours_temp_C[len_temp - 2]
+        temp_EMA_C.append(temp_price_now)
 
-    print("SPY NOW: ", SPY_NOW)
-    print("QQQ NOW: ", QQQ_NOW)
-    print("DIA NOW: ", DIA_NOW)
-    print("IWM NOW: ", IWM_NOW)
-    print("IWO NOW: ", IWO_NOW)
+        #Compute Long and Short EMA arrays for each index and populate stock object with current EMA data
 
-   #append to <index_name>_C
-    SPY_EMA_C.append(SPY_NOW)
-    QQQ_EMA_C.append(QQQ_NOW)
-    DIA_EMA_C.append(DIA_NOW)
-    IWM_EMA_C.append(IWM_NOW)
-    IWO_EMA_C.append(IWO_NOW)
+        temp_EMA_21_array = ema(temp_EMA_C, LONG_EMA)
+        temp_EMA_9_array = ema(temp_EMA_C, SHORT_EMA)
 
-    #Compute Long and Short EMA for each index
-    SPY_21D_EMA = ema(SPY_EMA_C, LONG_EMA)
-    SPY_9D_EMA = ema(SPY_EMA_C, SHORT_EMA)
+        stock.EMA_21 = temp_EMA_21_array[len(temp_EMA_21_array) - 1]
+        stock.EMA_9 = temp_EMA_9_array[len(temp_EMA_9_array) - 1]
 
-    QQQ_21D_EMA = ema(QQQ_EMA_C, LONG_EMA)
-    QQQ_9D_EMA = ema(QQQ_EMA_C, SHORT_EMA)
+        #Clear temp Arrays and Varibales
+        del temp_D_BARSET,temp_EMA_C, last_few_hours_temp, last_few_hours_temp_C, len_temp, temp_price_now, temp_EMA_21_array, temp_EMA_9_array
 
-    DIA_21D_EMA = ema(DIA_EMA_C, LONG_EMA)
-    DIA_9D_EMA = ema(DIA_EMA_C, SHORT_EMA)
 
-    IWM_21D_EMA = ema(IWM_EMA_C, LONG_EMA)
-    IWM_9D_EMA = ema(IWM_EMA_C, SHORT_EMA)
-
-    IWO_21D_EMA = ema(IWO_EMA_C, LONG_EMA)
-    IWO_9D_EMA = ema(IWO_EMA_C, SHORT_EMA)
-
-    #Return the SHORT AND LONG EMA for each index
-    INDEX_EMAS = [SPY_21D_EMA[len(SPY_21D_EMA) - 1], [SPY_9D_EMA[len(SPY_9D_EMA) - 1]], QQQ_21D_EMA[len(QQQ_21D_EMA) - 1], [QQQ_9D_EMA[len(QQQ_9D_EMA) - 1]] , DIA_21D_EMA[len(DIA_21D_EMA) - 1], [DIA_9D_EMA[len(DIA_9D_EMA) - 1]], IWM_21D_EMA[len(IWM_21D_EMA) - 1], [IWM_9D_EMA[len(IWM_9D_EMA) - 1]], IWO_21D_EMA[len(IWO_21D_EMA) - 1], [IWO_9D_EMA[len(IWO_9D_EMA) - 1]]]
-
-    #Connect to websocket to get todays current data
-     #Return the closing price
-
-    #price = web_socket_daily_bar.get_today_daily_bar('SPY')
-    #print("returned back to function!!")
-    return INDEX_EMAS
-
-################################################################################################################
+########################################################################################################################
+########################################################################################################################
 ### Parse CLosing Data ##########
 def parse_closes(RAW_DATA):
     temp_array = []
@@ -255,6 +164,7 @@ def parse_closes(RAW_DATA):
 
     return temp_array
 ################################################################################################################
+########################################################################################################################
 
 
 ################################################################################################################
