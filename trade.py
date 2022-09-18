@@ -17,6 +17,7 @@ from alpha_vantage.alpha_vantage.timeseries import TimeSeries
 from alpha_vantage.alpha_vantage.techindicators import TechIndicators
 import matplotlib.pyplot as plt
 import logging #for try-except blocks
+from enum import Enum
 
 #test for alpha_vantage
 #def get_ema(self, symbol, interval='daily', time_period=20, series_type='close'):
@@ -83,7 +84,7 @@ class Group:
 
         print ('\033[1m') #Bold FONT ON
         print("Group: ", self.name_group)
-        print('{:<10} {:^15} {:^20} {:^20} {:^20} {:^30}'.format("Name", "Est. Price", "21 EMA" , "9 EMA", temp_string_ld, temp_string_sd))
+        print('{:<10} {:^15} {:^15} {:^20} {:^20} {:^20} {:^30}'.format("Name", "Trend", "Est. Price", "21 EMA" , "9 EMA", temp_string_ld, temp_string_sd))
         print ('\033[0m') #Bold FONT OFF
 
         #Print Attributes For the Stock
@@ -95,14 +96,32 @@ class Group:
 #Create stock class (Child Class) to store the key data that will be used in the trading strategy.
 #This will allow us to choose different strategies to use for different stocks
 class Stock(Group):
-    def __init__(self, name, current_price_estimate = None, EMA_21 = None, EMA_9 = None, distribution_Short_len = None, distribution_Long_len = None, strategy = None):
+    def __init__(self, name, current_price_estimate = None, EMA_21 = None, EMA_9 = None, distribution_Short_len = None, distribution_Long_len = None, current_trend = None, strategy = None):
         self.name = name
         self.current_price_estimate = current_price_estimate        
         self.EMA_21 = EMA_21
         self.EMA_9 = EMA_9
         self.distribution_Short_len = distribution_Short_len
         self.distribution_Long_len = distribution_Long_len
+        #self.trend = current_trend #Make sure attribute scope is within object and not embedded (previous bug)
         self.strategy = strategy
+        
+        #If a trend starting value is provided, create object with it
+        if(current_trend != None):
+
+            try:
+                logging.info("Starting State for Trend provided")
+                self.trend = Trend(state = current_trend)
+
+            except:
+                self.trend = Trend() #create DEFAULT trend object since custom wont work
+                logging.error("ERROR loading current_trend attribute to trend object (child class). Default trend object created.")
+
+        #If no trend starting value is passed, create default Trend object
+        else:
+            logging.info("NO Starting State for Trend provided, DEFAULT USED")
+            self.trend = Trend() #create DEFAULT trend object
+
 
         #Calculate EMA score
         #IF Over both short and long EMA then score is 2/2 BULLISH
@@ -127,10 +146,49 @@ class Stock(Group):
 
         #Try to print attributes if populated
         try:
-            print('{:<10} {:^15} {:^20} {:^20} {:^20} {:^30}'.format(str(self.name), str(self.current_price_estimate), round(self.EMA_21, 2), round(self.EMA_9, 2), self.distribution_Long_len, self.distribution_Short_len))
+            print('{:<10} {:^15} {:^15} {:^20} {:^20} {:^20} {:^30}'.format(str(self.name), str(self.trend.print_trend()), str(self.current_price_estimate), round(self.EMA_21, 2), round(self.EMA_9, 2), self.distribution_Long_len, self.distribution_Short_len))
 
         except Exception as Argument:
             logging.exception("Error occured printing stock attributes. (Stock Attributes may not be populated)")
+
+
+    def print_trend(self):
+        print("The trend for: ",self.name, " is ", self.trend)
+
+############################################################################################################
+############################################################################################################
+class trend_state(Enum):
+    confirmed_downtrend = 1
+    end_downtrend = 2
+    confirmed_uptrend = 3
+    end_uptrend = 4
+    start_chop = 5
+    end_chop = 6
+    just_started = 7
+############################################################################################################
+############################################################################################################
+
+#Tracks the trend in a specific timeframe via states. See readme.md for picture dictating state machine and basic logic
+
+#State 1: Confirmed Downtrend: Lower Low and Lower High Most Recentlly Seen
+#State 2: No current trend: Possible reversal from Downtrend to Uptrend
+#State 3: Confirmed Uptrend: Higher Low and Higher High Most Recentlly Seen
+#State 4: No current trend: Possible reversal from Uptrend to Downtrend
+#State 5: Sideways / Chop: Market is confirmed choppy and no trend can be determined
+#State 6: Sideways / Chop: Market May be close to coming out of sideways/chop and a trend may soon be able to be determined
+#State 7: Not Enough Data: No trend Can be determined (DEFAULT)
+
+class Trend(Stock):
+
+    #Create Enum State Machine
+    #trend_child = trend_state()
+
+    def __init__(self, current_trend = trend_state.just_started): # trend_state.just_started
+        self.trend_child = current_trend #default state if no current_trend is passed in. (Will be used 99% of time)
+
+
+    def print_trend(self):
+        return (self.trend_child.name)
 
 ############################################################################################################
 ############################################################################################################
