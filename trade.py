@@ -16,6 +16,7 @@ from config import *
 from alpha_vantage.alpha_vantage.timeseries import TimeSeries
 from alpha_vantage.alpha_vantage.techindicators import TechIndicators
 import matplotlib.pyplot as plt
+import logging #for try-except blocks
 
 #test for alpha_vantage
 #def get_ema(self, symbol, interval='daily', time_period=20, series_type='close'):
@@ -65,11 +66,27 @@ class Group:
         except:
             pass
 
-    def print_group(self):
+    def print_group_names(self):
 
         print("\n\n Stocks in the ", self.name_group, " group are: \n")
         for stock_object in self.stock_objects_array:
             print(stock_object.name)
+
+
+    def print_group_data(self):
+
+        temp_string_ld = "Distribution ("  + str(market_health.LONG_DISTRIBUTION_NUMBER) + " Day)"
+        temp_string_sd = "Distribution ("  + str(market_health.SHORT_DISTRIBUTION_NUMBER) + " Day)"
+
+        print ('\033[1m') #Bold FONT ON
+        print("Group: ", self.name_group)
+        print('{:<10} {:^15} {:^20} {:^20} {:^20} {:^30}'.format("Name", "Est. Price", "21 EMA" , "9 EMA", temp_string_ld, temp_string_sd))
+        print ('\033[0m') #Bold FONT OFF
+
+        #Print Attributes For the Stock
+        for temp_name in self.stock_objects_array:
+            temp_name.print_attributes()
+
 
 
 #Create stock class (Child Class) to store the key data that will be used in the trading strategy.
@@ -101,6 +118,18 @@ class Stock(Group):
                 self.EMA_SCORE = 0
         except: 
             self.EMA_SCORE = None
+    
+    #Print the stock attributes
+    def print_attributes(self):
+
+        #Try to print attributes if populated
+        try:
+            print('{:<10} {:^15} {:^20} {:^20} {:^20} {:^30}'.format(str(self.name), str(self.current_price_estimate), round(self.EMA_21, 2), round(self.EMA_9, 2), self.distribution_Short_len, self.distribution_Long_len))
+
+        except Exception as Argument:
+            logging.exception("Error occured printing stock attributes. (Stock Attributes may not be populated)")
+
+
 
 ############################################################################################################
 ############################################################################################################
@@ -144,17 +173,20 @@ def main():
     #Create Index Group
     index_group = Group()
     index_group.create_group(index_names_array, name_group = "Indexes")
-    index_group.print_group()
+    index_group.print_group_names()
 
     #print ("test!!!")
     #orders = get_orders()
     #print(orders)
     #print ("New TEST: \n\n\n")
 
-    distribution_array_indexes = market_health.get_distribution_health(api, index_group)
-    SPY_TEST = market_health.get_ema_health(api, index_group)
+    market_health.get_distribution_health(api, index_group)
+    market_health.get_ema_health(api, index_group)
 
-    print("TEST FROM MAIN FUNCTION", index_group.stock_objects_array[3].name, index_group.stock_objects_array[3].EMA_21)
+    #print("TEST FROM MAIN FUNCTION", index_group.stock_objects_array[3].name, index_group.stock_objects_array[3].EMA_21)
+
+    #Test Print Object Funciton
+    index_group.print_group_data()
     
 
 
