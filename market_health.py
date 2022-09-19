@@ -16,11 +16,11 @@ from alpaca_trade_api.rest import REST, TimeFrame
 import datetime as dt #to get date
 import pytz #to get date
 import math #rounding purposes
-import web_socket_daily_bar
+import web_socket_daily_bar #Needs to be dubugged later
+
 #api_test = REST()
 #import alpaca_trad_api #delete
 import time
-from datetime import datetime, timedelta
 from pytz import timezone
 import logging #added for logging purposes
 import logging.handlers #added for logging purposes
@@ -242,3 +242,44 @@ def get_price_estimate(api, group):
             stock.current_price_estimate = last_few_hours_temp_C[len_temp - 1]
 
             del start_time_hours, last_few_hours_temp, last_few_hours_temp_C, len_temp
+
+################################################################################################################
+################################################################################################################
+###   Get Daily Bars Helper function for a specific stock
+def get_Dataset_D(api, stock, DATA_PERIOD = 260):
+
+    timeNow = dt.datetime.now(pytz.timezone('US/Eastern'))
+    start_time = timeNow - dt.timedelta(days=DATA_PERIOD)
+    start_time_hours = (timeNow - dt.timedelta(hours=60)).isoformat()
+
+    #Determine Daily trend by pulling daily bars
+    temp_D_BARSET = api.get_bars(stock.name, TimeFrame.Day, start = start_time.isoformat(), end = None, limit = DATA_PERIOD)
+    temp_D_BARSET_PARSED = parse_closes(temp_D_BARSET)
+
+    last_few_hours_temp = api.get_bars(stock.name, TimeFrame.Hour, start = start_time_hours, end = None, limit = 60)
+    last_few_hours_temp_C = parse_closes(last_few_hours_temp)
+
+    #Get Most Current Hourly Close and append to dataset
+    len_temp = len(last_few_hours_temp_C)
+    temp_price_now = last_few_hours_temp_C[len_temp - 1]
+    temp_D_BARSET_PARSED.append(temp_price_now)
+
+    #Store attribute and return dataset
+    stock.dataset = temp_D_BARSET_PARSED
+    return temp_D_BARSET_PARSED
+
+################################################################################################################
+################################################################################################################
+### Use historical data to determine the current trend on specified timeframe(s)   ####
+def get_starting_trend(api, group):
+
+    #Function Constants (Amount of bars taken for computations)
+    DATA_PERIOD_DAY = 260 
+
+    #For each stock start by getting Daily Data Set
+    for stock_obj in group.stock_objects_array:
+
+        dataset_daily = get_Dataset_D(api, stock_obj, DATA_PERIOD_DAY)
+        stock_obj.determine_ititial_trend()
+        
+        

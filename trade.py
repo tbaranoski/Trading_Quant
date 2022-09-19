@@ -1,5 +1,7 @@
 #https://forum.alpaca.markets/t/get-bars-vs-get-barset/8127/6 -----Reference for get_bars
 
+from ast import And
+from email.policy import default
 from pickle import NONE
 from sys import api_version
 from unicodedata import name
@@ -7,17 +9,20 @@ import requests , json
 
 #Helper Functions and filepaths
 import alpaca_trade_api as tradeapi #addded line
+import pytz #to get date
+from alpaca_trade_api.rest import REST, TimeFrame
+import time
 #import computations.market_health as market_health #added line
 #from market_health import *
 import market_health
 from config import *
+import logging #for try-except blocks
+from enum import Enum
 
 #imports for alpha_vantage package
 from alpha_vantage.alpha_vantage.timeseries import TimeSeries
 from alpha_vantage.alpha_vantage.techindicators import TechIndicators
 import matplotlib.pyplot as plt
-import logging #for try-except blocks
-from enum import Enum
 
 #test for alpha_vantage
 #def get_ema(self, symbol, interval='daily', time_period=20, series_type='close'):
@@ -83,7 +88,7 @@ class Group:
         temp_string_sd = "Distribution ("  + str(market_health.SHORT_DISTRIBUTION_NUMBER) + " Day)"
 
         print ('\033[1m') #Bold FONT ON
-        print("Group: ", self.name_group)
+        print("Group:", self.name_group)
         print('{:<10} {:^15} {:^15} {:^20} {:^20} {:^20} {:^30}'.format("Name", "Trend", "Est. Price", "21 EMA" , "9 EMA", temp_string_ld, temp_string_sd))
         print ('\033[0m') #Bold FONT OFF
 
@@ -91,20 +96,18 @@ class Group:
         for temp_name in self.stock_objects_array:
             temp_name.print_attributes()
 
-
-
 #Create stock class (Child Class) to store the key data that will be used in the trading strategy.
 #This will allow us to choose different strategies to use for different stocks
 class Stock(Group):
-    def __init__(self, name, current_price_estimate = None, EMA_21 = None, EMA_9 = None, distribution_Short_len = None, distribution_Long_len = None, current_trend = None, strategy = None):
+    def __init__(self, name, current_price_estimate = None, EMA_21 = None, EMA_9 = None, distribution_Short_len = None, distribution_Long_len = None, current_trend = None, strategy = None, data_temp = []):
         self.name = name
         self.current_price_estimate = current_price_estimate        
         self.EMA_21 = EMA_21
         self.EMA_9 = EMA_9
         self.distribution_Short_len = distribution_Short_len
         self.distribution_Long_len = distribution_Long_len
-        #self.trend = current_trend #Make sure attribute scope is within object and not embedded (previous bug)
         self.strategy = strategy
+        self.dataset = data_temp
         
         #If a trend starting value is provided, create object with it
         if(current_trend != None):
@@ -146,7 +149,7 @@ class Stock(Group):
 
         #Try to print attributes if populated
         try:
-            print('{:<10} {:^15} {:^15} {:^20} {:^20} {:^20} {:^30}'.format(str(self.name), str(self.trend.print_trend()), str(self.current_price_estimate), round(self.EMA_21, 2), round(self.EMA_9, 2), self.distribution_Long_len, self.distribution_Short_len))
+            print('{:<10} {:^15} {:^15} {:^20} {:^20} {:^20} {:^30}'.format(str(self.name), str(self.trend.print_trend_D()), str(self.current_price_estimate), round(self.EMA_21, 2), round(self.EMA_9, 2), self.distribution_Long_len, self.distribution_Short_len))
 
         except Exception as Argument:
             logging.exception("Error occured printing stock attributes. (Stock Attributes may not be populated)")
@@ -155,8 +158,137 @@ class Stock(Group):
     def print_trend(self):
         print("The trend for: ",self.name, " is ", self.trend)
 
+    ##################################################################################################################################
+    #Fucntion Analyzes data looking for Higher Highs, Higher Lows, Lower Lows and Lower Highs with Price Action
+    def determine_ititial_trend(self):
+
+        #CONSTANTS #Used for computation: These numbers will be played with to dial in the accuracy of the function
+        BARS_TO_CONFIRM_RELATIVE_HIGH = 4
+        BARS_TO_CONFIRM_RELATIVE_LOW = 3
+
+        #Flags and temp var
+        looking_for_new_high = None #Used to switch to mode operation when switched to true after intial start
+        last_high = None
+        last_low = None
+        temp_high = None
+        temp_low = None
+        
+        #Get length of dataset and set intital trend parameters set to first price
+        length_dataset = len(self.dataset)
+        print("length of set: ", length_dataset)
+
+        self.trend.temp_high_price = self.dataset[0]
+        self.trend.temp_low_price = self.dataset[0]
+        last_high = self.dataset[0]
+        last_low = self.dataset[0]
+
+        #If it is first itteration, populate with temporary values
+        if((temp_high == None) or (temp_low == None)):
+            temp_high = self.dataset[0]
+            temp_low = self.dataset[0]
+    
+
+        ###############################################################################################################
+        #Go through the bars one by one and look for lower high and lower low
+        skip_num = 2 #Grab every other bar
+        for i in range(0 + skip_num, length_dataset, skip_num):
+            
+            confirm_counter = 0
+            #Determine if most recent bar is higher or lower
+            #Higher close spotted. Look for next high
+            if((looking_for_new_high == True) or (self.dataset[i] > temp_high)):
+
+                #Look for temporary high. If it is higher than last candle save as temp_high. If not keep going through for loop
+                if(self.dataset[i] > temp_high):
+                    temp_high = self.dataset[i]
+                    
+                    for x in range(i, length_dataset - 1):
+
+                        #New temp high, save it
+                        if(self.dataset[x] > temp_high):
+                            temp_high = self.dataset[x]
+                            confirm_counter = 0 #reset counter, new high
+                        #Not a high, add to counter
+                        else:
+                            confirm_counter = confirm_counter + 1
+
+                        #IF the high is confirmed stop looking for relative high, begin too look for low now
+                        if(confirm_counter == BARS_TO_CONFIRM_RELATIVE_HIGH):
+
+                            #Compare to last relative high. If higher then last we appear to be possiblly trending up
+                            if(temp_high > last_high):
+                                self.trend.higher_high_counter = (self.trend.higher_high_counter) + 1
+
+                            #If new relative high is lower than previous, appears to be possiblly trending down
+                            else:
+                                self.trend.higher_high_counter = 0
+    
+                            #save the last high and switch modes
+                            last_high = temp_high
+                            looking_for_new_high = False
+                            break
+
+
+
+
+
+
+            #######################################################################################################
+            #lower close spotted. Look for next low
+            elif((looking_for_new_high == False) or (self.dataset[i] < temp_low)):
+
+                #Look for temporary lowh. If it is lower than last candle save as temp_low. If not keep going through for loop
+                if(self.dataset[i] < temp_low):
+                    temp_low = self.dataset[i]
+
+              
+                    for x in range(i, length_dataset - 1):
+
+                        #New temp low, save it
+                        if(self.dataset[x] < temp_low):
+                            temp_low = self.dataset[x]
+                            confirm_counter = 0 #reset counter, new high
+                        #Not a low, add to counter
+                        else:
+                            confirm_counter = confirm_counter + 1
+
+                        #IF the low is confirmed stop looking for relative loqh, begin too look for high now
+                        if(confirm_counter == BARS_TO_CONFIRM_RELATIVE_LOW):
+
+                            #Compare to last relative low. If lower then last we appear to be possiblly trending down
+                            if(temp_low < last_low):
+                                self.trend.lower_low_counter = (self.trend.lower_low_counter) + 1
+
+                            #If new relative low is higher than previous, appears to be possiblly trending down
+                            else:
+                                self.trend.lower_low_counter = 0
+    
+                            #save the last low and switch modes
+                            last_low = temp_low
+                            looking_for_new_high = True
+                            break
+
+
+        #For loop end
+
+
+
+
+    ##################################################################################################################################
+
+
+
 ############################################################################################################
 ############################################################################################################
+
+#State 1: Confirmed Downtrend: Lower Low and Lower High Most Recentlly Seen
+#State 2: No current trend: Possible reversal from Downtrend to Uptrend
+#State 3: Confirmed Uptrend: Higher Low and Higher High Most Recentlly Seen
+#State 4: No current trend: Possible reversal from Uptrend to Downtrend
+#State 5: Sideways / Chop: Market is confirmed choppy and no trend can be determined
+#State 6: Sideways / Chop: Market May be close to coming out of sideways/chop and a trend may soon be able to be determined
+#State 7: Not Enough Data: No trend Can be determined (DEFAULT)
+
 class trend_state(Enum):
     confirmed_downtrend = 1
     end_downtrend = 2
@@ -168,27 +300,28 @@ class trend_state(Enum):
 ############################################################################################################
 ############################################################################################################
 
-#Tracks the trend in a specific timeframe via states. See readme.md for picture dictating state machine and basic logic
-
-#State 1: Confirmed Downtrend: Lower Low and Lower High Most Recentlly Seen
-#State 2: No current trend: Possible reversal from Downtrend to Uptrend
-#State 3: Confirmed Uptrend: Higher Low and Higher High Most Recentlly Seen
-#State 4: No current trend: Possible reversal from Uptrend to Downtrend
-#State 5: Sideways / Chop: Market is confirmed choppy and no trend can be determined
-#State 6: Sideways / Chop: Market May be close to coming out of sideways/chop and a trend may soon be able to be determined
-#State 7: Not Enough Data: No trend Can be determined (DEFAULT)
+#Tracks the trend in a specific timeframe via states. See readme.md for picture dictating state machine and basic logic.
+#See trend_state(Enum) above for additional info
 
 class Trend(Stock):
 
-    #Create Enum State Machine
-    #trend_child = trend_state()
+    def __init__(self, current_trend = trend_state.just_started, trend_hour = trend_state.just_started, trend_30min = trend_state.just_started, trend_15min = trend_state.just_started, trend_5min = trend_state.just_started, trend_1min = trend_state.just_started, temp_high_price = None, temp_low_price = None, higher_high_counter = 0, lower_low_counter = 0):
+        self.trend_child_Day = current_trend #default state if no current_trend is passed in. (Will be used 99% of time). Note: Daily timeframe
+        self.trend_child_Hour = trend_hour
+        self.trend_child_30min = trend_30min
+        self.trend_child_15min = trend_15min
+        self.trend_child_5min = trend_5min
+        self.trend_child_1min = trend_1min
 
-    def __init__(self, current_trend = trend_state.just_started): # trend_state.just_started
-        self.trend_child = current_trend #default state if no current_trend is passed in. (Will be used 99% of time)
+        #For Computations and Determing Trend
+        self.temp_high_price = temp_high_price
+        self.temp_low_price = temp_low_price
 
+        self.higher_high_counter = higher_high_counter
+        self.lower_low_counter = lower_low_counter
 
-    def print_trend(self):
-        return (self.trend_child.name)
+    def print_trend_D(self):
+        return (self.trend_child_Day.name)
 
 ############################################################################################################
 ############################################################################################################
@@ -242,6 +375,7 @@ def main():
     market_health.get_distribution_health(api, index_group)
     market_health.get_ema_health(api, index_group)
     market_health.get_price_estimate(api, index_group)
+    market_health.get_starting_trend(api, index_group)
 
     #print("TEST FROM MAIN FUNCTION", index_group.stock_objects_array[3].name, index_group.stock_objects_array[3].EMA_21)
 
