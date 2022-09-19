@@ -221,7 +221,7 @@ def get_price_estimate(api, group):
         for stock in group.stock_objects_array:
             start_time_hours = (timeNow - dt.timedelta(hours=1)).isoformat()
 
-            last_few_hours_temp = api.get_bars(stock.name, TimeFrame.Min, start = start_time_hours, end = None, limit = 120)
+            last_few_hours_temp = api.get_bars(stock.name, TimeFrame.Minute, start = start_time_hours, end = None, limit = 120)
             last_few_hours_temp_C = parse_closes(last_few_hours_temp)
             len_temp = len(last_few_hours_temp_C)        
             stock.current_price_estimate = last_few_hours_temp_C[len_temp - 1]

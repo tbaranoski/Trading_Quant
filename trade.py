@@ -161,117 +161,8 @@ class Stock(Group):
     ##################################################################################################################################
     #Fucntion Analyzes data looking for Higher Highs, Higher Lows, Lower Lows and Lower Highs with Price Action
     def determine_ititial_trend(self):
-
-        #CONSTANTS #Used for computation: These numbers will be played with to dial in the accuracy of the function
-        BARS_TO_CONFIRM_RELATIVE_HIGH = 4
-        BARS_TO_CONFIRM_RELATIVE_LOW = 3
-
-        #Flags and temp var
-        looking_for_new_high = None #Used to switch to mode operation when switched to true after intial start
-        last_high = None
-        last_low = None
-        temp_high = None
-        temp_low = None
-        
-        #Get length of dataset and set intital trend parameters set to first price
-        length_dataset = len(self.dataset)
-        print("length of set: ", length_dataset)
-
-        self.trend.temp_high_price = self.dataset[0]
-        self.trend.temp_low_price = self.dataset[0]
-        last_high = self.dataset[0]
-        last_low = self.dataset[0]
-
-        #If it is first itteration, populate with temporary values
-        if((temp_high == None) or (temp_low == None)):
-            temp_high = self.dataset[0]
-            temp_low = self.dataset[0]
-    
-
-        ###############################################################################################################
-        #Go through the bars one by one and look for lower high and lower low
-        skip_num = 2 #Grab every other bar
-        for i in range(0 + skip_num, length_dataset, skip_num):
-            
-            confirm_counter = 0
-            #Determine if most recent bar is higher or lower
-            #Higher close spotted. Look for next high
-            if((looking_for_new_high == True) or (self.dataset[i] > temp_high)):
-
-                #Look for temporary high. If it is higher than last candle save as temp_high. If not keep going through for loop
-                if(self.dataset[i] > temp_high):
-                    temp_high = self.dataset[i]
-                    
-                    for x in range(i, length_dataset - 1):
-
-                        #New temp high, save it
-                        if(self.dataset[x] > temp_high):
-                            temp_high = self.dataset[x]
-                            confirm_counter = 0 #reset counter, new high
-                        #Not a high, add to counter
-                        else:
-                            confirm_counter = confirm_counter + 1
-
-                        #IF the high is confirmed stop looking for relative high, begin too look for low now
-                        if(confirm_counter == BARS_TO_CONFIRM_RELATIVE_HIGH):
-
-                            #Compare to last relative high. If higher then last we appear to be possiblly trending up
-                            if(temp_high > last_high):
-                                self.trend.higher_high_counter = (self.trend.higher_high_counter) + 1
-
-                            #If new relative high is lower than previous, appears to be possiblly trending down
-                            else:
-                                self.trend.higher_high_counter = 0
-    
-                            #save the last high and switch modes
-                            last_high = temp_high
-                            looking_for_new_high = False
-                            break
-
-
-
-
-
-
-            #######################################################################################################
-            #lower close spotted. Look for next low
-            elif((looking_for_new_high == False) or (self.dataset[i] < temp_low)):
-
-                #Look for temporary lowh. If it is lower than last candle save as temp_low. If not keep going through for loop
-                if(self.dataset[i] < temp_low):
-                    temp_low = self.dataset[i]
-
-              
-                    for x in range(i, length_dataset - 1):
-
-                        #New temp low, save it
-                        if(self.dataset[x] < temp_low):
-                            temp_low = self.dataset[x]
-                            confirm_counter = 0 #reset counter, new high
-                        #Not a low, add to counter
-                        else:
-                            confirm_counter = confirm_counter + 1
-
-                        #IF the low is confirmed stop looking for relative loqh, begin too look for high now
-                        if(confirm_counter == BARS_TO_CONFIRM_RELATIVE_LOW):
-
-                            #Compare to last relative low. If lower then last we appear to be possiblly trending down
-                            if(temp_low < last_low):
-                                self.trend.lower_low_counter = (self.trend.lower_low_counter) + 1
-
-                            #If new relative low is higher than previous, appears to be possiblly trending down
-                            else:
-                                self.trend.lower_low_counter = 0
-    
-                            #save the last low and switch modes
-                            last_low = temp_low
-                            looking_for_new_high = True
-                            break
-
-
-        #For loop end
-
-
+        print("QUICK TEST!!!!")
+       
 
 
     ##################################################################################################################################
@@ -281,22 +172,24 @@ class Stock(Group):
 ############################################################################################################
 ############################################################################################################
 
-#State 1: Confirmed Downtrend: Lower Low and Lower High Most Recentlly Seen
-#State 2: No current trend: Possible reversal from Downtrend to Uptrend
-#State 3: Confirmed Uptrend: Higher Low and Higher High Most Recentlly Seen
-#State 4: No current trend: Possible reversal from Uptrend to Downtrend
-#State 5: Sideways / Chop: Market is confirmed choppy and no trend can be determined
-#State 6: Sideways / Chop: Market May be close to coming out of sideways/chop and a trend may soon be able to be determined
-#State 7: Not Enough Data: No trend Can be determined (DEFAULT)
+#1: confirmed_uptrend: Confirmed Uptrend
+#2: possible_uptrend_reversal: Trend Might Reverse from Uptrend to Downtrend
+#3: confirmed_downtrend: Confirmed Downtrend
+#4: possible_downtrend_reversal: Trend Might Reverse from Downtrned to Uptrend
+#5: volitility_contraction: The Market is going Sideways and Contracting
+#6: volitility_expansion: Volitility is Expanding
+#7: The initial state
 
 class trend_state(Enum):
-    confirmed_downtrend = 1
-    end_downtrend = 2
-    confirmed_uptrend = 3
-    end_uptrend = 4
-    start_chop = 5
-    end_chop = 6
-    just_started = 7
+    confirmed_uptrend = 1
+    possible_uptrend_reversal = 2
+    confirmed_downtrend = 3
+    possible_downtrend_reversal = 4
+    volitility_contraction = 5
+    volitility_expansion = 6
+    starting_state = 7
+    debug = 8 #Used for troubleshooting
+    
 ############################################################################################################
 ############################################################################################################
 
@@ -305,7 +198,9 @@ class trend_state(Enum):
 
 class Trend(Stock):
 
-    def __init__(self, current_trend = trend_state.just_started, trend_hour = trend_state.just_started, trend_30min = trend_state.just_started, trend_15min = trend_state.just_started, trend_5min = trend_state.just_started, trend_1min = trend_state.just_started, temp_high_price = None, temp_low_price = None, higher_high_counter = 0, lower_low_counter = 0):
+    def __init__(self, current_trend = trend_state.starting_state, trend_hour = trend_state.starting_state, trend_30min = trend_state.starting_state, trend_15min = trend_state.starting_state, trend_5min = trend_state.starting_state, trend_1min = trend_state.starting_state, higher_high_counter = 0, lower_low_counter = 0, higher_low_counter = 0, lower_high_counter = 0):
+        
+        #Trend Attributes for Different TimeFrames
         self.trend_child_Day = current_trend #default state if no current_trend is passed in. (Will be used 99% of time). Note: Daily timeframe
         self.trend_child_Hour = trend_hour
         self.trend_child_30min = trend_30min
@@ -314,12 +209,21 @@ class Trend(Stock):
         self.trend_child_1min = trend_1min
 
         #For Computations and Determing Trend
-        self.temp_high_price = temp_high_price
-        self.temp_low_price = temp_low_price
-
         self.higher_high_counter = higher_high_counter
+        self.higher_low_counter = higher_low_counter
         self.lower_low_counter = lower_low_counter
+        self.lower_high_counter = lower_high_counter
 
+    ##################################################################
+
+    #Resets trend markers to default when computing trend for a new timeframe
+    def reset_trend_markers(self):
+        self.higher_high_counter = 0
+        self.higher_low_counter = 0
+        self.lower_low_counter = 0
+        self.lower_high_counter = 0
+
+    #Print Main Daily Trend
     def print_trend_D(self):
         return (self.trend_child_Day.name)
 
