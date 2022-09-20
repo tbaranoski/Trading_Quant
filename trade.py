@@ -205,7 +205,6 @@ class Stock(Group):
             #Update the Trend State Machine
             self.trend.update_state()
 
-
             i = i + SKIP_INCREMENT
         #### END OF WHILE
 
@@ -219,13 +218,13 @@ class Stock(Group):
             #Compare to last High
             #If Higher add to higher high, reset lower high
             if(pivot > self.trend.last_high):
-                self.trend.higher_high_count = self.trend.higher_high_count + 1
-                self.trend.lower_high_count = 0
+                self.trend.higher_high_counter = self.trend.higher_high_counter + 1
+                self.trend.lower_high_counter = 0
             
             #If Lower reset higher high, add to lower high
             else:
-                self.trend.higher_high_count = 0
-                self.trend.lower_high_count = self.trend.lower_high_count + 1
+                self.trend.higher_high_counter = 0
+                self.trend.lower_high_counter = self.trend.lower_high_counter + 1
 
             #Save pivot
             self.trend.last_high = pivot
@@ -237,13 +236,13 @@ class Stock(Group):
             #Compare to last Low
             #If lower add to lower low count and reset higher low count
             if(pivot < self.trend.last_low):
-                self.trend.lower_low_count = self.trend.lower_low_count + 1
-                self.trend.higher_low_count = 0
+                self.trend.lower_low_counter = self.trend.lower_low_counter + 1
+                self.trend.higher_low_counter = 0
             
             #If higher low reset lower low count and increment higher low
             else:
-                self.trend.lower_low_count = 0
-                self.trend.higher_low_count = self.trend.higher_low_count + 1
+                self.trend.lower_low_counter = 0
+                self.trend.higher_low_counter = self.trend.higher_low_counter + 1
 
             #Save pivot
             self.trend.last_low = pivot
@@ -394,13 +393,14 @@ class Trend(Stock):
     def update_state(self):
 
         last_state_temp = None
+        new_state_temp = None
 
         #Get Last state first. Pull appropriate varibale coresponding to that timeframe.
         #Essentially case statement but case is only supported python 3.10
         if(self.current_timeframe_string == "Week"):
             last_state_temp = self.trend_child_Week
         if(self.current_timeframe_string == "Day"):
-                last_state_temp = self.trend_child_Day
+            last_state_temp = self.trend_child_Day
         if(self.current_timeframe_string == "Hour"):
             last_state_temp = self.trend_child_Hour
         if(self.current_timeframe_string == "30min"):
@@ -412,7 +412,24 @@ class Trend(Stock):
         if(self.current_timeframe_string == "1min"):
             last_state_temp = self.trend_child_1min
 
-        state_machine(last_state_temp)
+        new_state_temp = self.state_machine(last_state_temp)
+        
+        #Set that Timeframe State to new State
+        if(self.current_timeframe_string == "Week"):
+            self.trend_child_Week = new_state_temp
+        if(self.current_timeframe_string == "Day"):
+            self.trend_child_Day = new_state_temp
+        if(self.current_timeframe_string == "Hour"):
+            self.trend_child_Hour = new_state_temp
+        if(self.current_timeframe_string == "30min"):
+            self.trend_child_30min = new_state_temp
+        if(self.current_timeframe_string == "15min"):
+            self.trend_child_15min = new_state_temp
+        if(self.current_timeframe_string == "5min"):
+            self.trend_child_5min = new_state_temp
+        if(self.current_timeframe_string == "1min"):
+            self.trend_child_1min = new_state_temp
+
 
 ####################################################################################################
 ####################################################################################################
@@ -457,7 +474,7 @@ class Trend(Stock):
 
 
         #State 2: possible_uptrend_reversal to downside
-        if(last_state == trend_state.possible_uptrend_reversal):
+        elif(last_state == trend_state.possible_uptrend_reversal):
 
             #Four possible Scenarios: Stay at state 2, go to state 6, go to state 5 or go to state 3
             #State: 2 -> 6
@@ -473,13 +490,11 @@ class Trend(Stock):
                 new_state = trend_state.confirmed_downtrend
 
             #Stay at State. State: 2 -> 2
-            else((self.higher_high_counter == 0) and ( self.higher_low_counter == 0) and (self.lower_low_counter >= 2) and (self.lower_high_counter >= 2)):
-                new_state = trend_state.possible_downtrend_reversal
-
-
+            else:
+                new_state = trend_state.possible_uptrend_reversal
 
         #State 3: confirmed_downtrend
-        if(last_state == trend_state.confirmed_downtrend):
+        elif(last_state == trend_state.confirmed_downtrend):
 
             #Possibilities include: go back to state 3 or go to state 4 (6 combinations)
             #State:3 -> 4 (combination 1)
@@ -487,23 +502,23 @@ class Trend(Stock):
                 new_state = trend_state.possible_downtrend_reversal
 
             #State:3 -> 4 (combination 2)
-            if((self.higher_high_counter == 1) and ( self.higher_low_counter == 1) and (self.lower_low_counter == 0) and (self.lower_high_counter == 0)):
+            elif((self.higher_high_counter == 1) and ( self.higher_low_counter == 1) and (self.lower_low_counter == 0) and (self.lower_high_counter == 0)):
                 new_state = trend_state.possible_downtrend_reversal
 
             #State:3 -> 4 (combination 3)
-            if((self.higher_high_counter == 2) and ( self.higher_low_counter == 1) and (self.lower_low_counter == 0) and (self.lower_high_counter == 0)):
+            elif((self.higher_high_counter == 2) and ( self.higher_low_counter == 1) and (self.lower_low_counter == 0) and (self.lower_high_counter == 0)):
                 new_state = trend_state.possible_downtrend_reversal
 
             #State:3 -> 4 (combination 4)
-            if((self.higher_high_counter == 0) and ( self.higher_low_counter == 1) and (self.lower_low_counter == 0) and (self.lower_high_counter >= 2)):
+            elif((self.higher_high_counter == 0) and ( self.higher_low_counter == 1) and (self.lower_low_counter == 0) and (self.lower_high_counter >= 2)):
                 new_state = trend_state.possible_downtrend_reversal
 
             #State:3 -> 4 (combination 5)
-            if((self.higher_high_counter == 1) and ( self.higher_low_counter == 1) and (self.lower_low_counter == 0) and (self.lower_high_counter == 0)):
+            elif((self.higher_high_counter == 1) and ( self.higher_low_counter == 1) and (self.lower_low_counter == 0) and (self.lower_high_counter == 0)):
                 new_state = trend_state.possible_downtrend_reversal
 
             #State:3 -> 4 (combination 6)
-            if((self.higher_high_counter == 1) and (self.higher_low_counter == 2) and (self.lower_low_counter == 0) and (self.lower_high_counter == 0)):
+            elif((self.higher_high_counter == 1) and (self.higher_low_counter == 2) and (self.lower_low_counter == 0) and (self.lower_high_counter == 0)):
                 new_state = trend_state.possible_downtrend_reversal
 
             #Stay at confirmed downtrend State 3 -> 3
@@ -512,19 +527,155 @@ class Trend(Stock):
 
 
         #State 4: possible_downtrend_reversal
-        if(last_state == trend_state.possible_downtrend_reversal):
+        elif(last_state == trend_state.possible_downtrend_reversal):
+
+            #Four possible Scenarios: Stay at state 4, go to state 6, go to state 5 or go to state 1
+            #State: 4 -> 6
+            if((self.higher_high_counter >= 2) and ( self.higher_low_counter == 0) and (self.lower_low_counter >= 2) and (self.lower_high_counter == 0)):
+                new_state = trend_state.volitility_expansion
+
+            #State: 4 -> 5
+            elif((self.higher_high_counter == 0) and ( self.higher_low_counter >= 2) and (self.lower_low_counter == 0) and (self.lower_high_counter >= 2)):
+                new_state = trend_state.volitility_contraction
+
+            #State: 4 -> 1
+            elif((self.higher_high_counter >= 2) and ( self.higher_low_counter >= 2) and (self.lower_low_counter == 0) and (self.lower_high_counter == 0)):
+                new_state = trend_state.confirmed_downtrend
+
+            #Stay at State. State: 4 -> 4
+            else:
+                new_state = trend_state.possible_downtrend_reversal
 
 
         #State 5: volitility_contraction
-        if(last_state == trend_state.volitility_contraction):
+        elif(last_state == trend_state.volitility_contraction):
 
+            #Three possible Combinations: Stay at state 5 or go to Possible Uptrend (6 possible Combinations) or go to Possible Downtrend (6 possible combinations)
+            #5 ->2
+      
+            #State :5 -> 2 (combination 1)
+            if((self.higher_high_counter == 0) and ( self.higher_low_counter >= 2) and (self.lower_low_counter == 0) and (self.lower_high_counter == 1)):
+                new_state = trend_state.possible_uptrend_reversal
+
+            #State :5 -> 2 (combination 2)
+            elif((self.higher_high_counter == 0) and ( self.higher_low_counter == 0) and (self.lower_low_counter == 1) and (self.lower_high_counter == 1)):
+                new_state = trend_state.possible_uptrend_reversal
+
+            #State :5 -> 2 (combination 3)
+            elif((self.higher_high_counter == 0) and ( self.higher_low_counter == 0) and (self.lower_low_counter == 1) and (self.lower_high_counter == 2)):
+                new_state = trend_state.possible_uptrend_reversal
+
+            #State :5 -> 2 (combination 4)
+            elif((self.higher_high_counter >= 2) and ( self.higher_low_counter == 0) and (self.lower_low_counter == 1) and (self.lower_high_counter == 0)):
+                new_state = trend_state.possible_uptrend_reversal
+
+            #State :5 -> 2 (combination 5)
+            elif((self.higher_high_counter == 0) and ( self.higher_low_counter == 0) and (self.lower_low_counter == 1) and (self.lower_high_counter == 1)):
+                new_state = trend_state.possible_uptrend_reversal
+
+            #State :5 -> 2 (combination 6)
+            elif((self.higher_high_counter == 0) and (self.higher_low_counter == 0) and (self.lower_low_counter == 2) and (self.lower_high_counter == 1)):
+                new_state = trend_state.possible_uptrend_reversal
+
+            ##############################################################################################
+
+            #State:5 -> 4 (combination 1)
+            elif((self.higher_high_counter == 1) and ( self.higher_low_counter == 0) and (self.lower_low_counter >= 2) and (self.lower_high_counter == 0)):
+                new_state = trend_state.possible_downtrend_reversal
+
+            #State:5 -> 4 (combination 2)
+            elif((self.higher_high_counter == 1) and ( self.higher_low_counter == 1) and (self.lower_low_counter == 0) and (self.lower_high_counter == 0)):
+                new_state = trend_state.possible_downtrend_reversal
+
+            #State:5 -> 4 (combination 3)
+            elif((self.higher_high_counter == 2) and ( self.higher_low_counter == 1) and (self.lower_low_counter == 0) and (self.lower_high_counter == 0)):
+                new_state = trend_state.possible_downtrend_reversal
+
+            #State:5 -> 4 (combination 4)
+            elif((self.higher_high_counter == 0) and ( self.higher_low_counter == 1) and (self.lower_low_counter == 0) and (self.lower_high_counter >= 2)):
+                new_state = trend_state.possible_downtrend_reversal
+
+            #State:5 -> 4 (combination 5)
+            elif((self.higher_high_counter == 1) and ( self.higher_low_counter == 1) and (self.lower_low_counter == 0) and (self.lower_high_counter == 0)):
+                new_state = trend_state.possible_downtrend_reversal
+
+            #State:5 -> 4 (combination 6)
+            elif((self.higher_high_counter == 1) and (self.higher_low_counter == 2) and (self.lower_low_counter == 0) and (self.lower_high_counter == 0)):
+                new_state = trend_state.possible_downtrend_reversal
+
+            #State:5 -> 5 
+            elif((self.higher_high_counter == 0) and (self.higher_low_counter >= 2) and (self.lower_low_counter == 0) and (self.lower_high_counter >= 2)):
+                new_state = trend_state.volitility_contraction
+
+            #Should not end up here but logic could be flawed
+            else:
+                new_state = trend_state.debug
 
         #State 6: volitility_expansion
-        if(last_state == trend_state.volitility_expansion):
+        elif(last_state == trend_state.volitility_expansion):
+
+            #Three possible Combinations: Stay at state 6 or go to Possible Uptrend (6 possible Combinations) or go to Possible Downtrend (6 possible combinations)
+            #State :6 -> 2 (combination 1)
+            if((self.higher_high_counter == 0) and ( self.higher_low_counter >= 2) and (self.lower_low_counter == 0) and (self.lower_high_counter == 1)):
+                new_state = trend_state.possible_uptrend_reversal
+
+            #State :6 -> 2 (combination 2)
+            elif((self.higher_high_counter == 0) and ( self.higher_low_counter == 0) and (self.lower_low_counter == 1) and (self.lower_high_counter == 1)):
+                new_state = trend_state.possible_uptrend_reversal
+
+            #State :6 -> 2 (combination 3)
+            elif((self.higher_high_counter == 0) and ( self.higher_low_counter == 0) and (self.lower_low_counter == 1) and (self.lower_high_counter == 2)):
+                new_state = trend_state.possible_uptrend_reversal
+
+            #State :6 -> 2 (combination 4)
+            elif((self.higher_high_counter >= 2) and ( self.higher_low_counter == 0) and (self.lower_low_counter == 1) and (self.lower_high_counter == 0)):
+                new_state = trend_state.possible_uptrend_reversal
+
+            #State :6 -> 2 (combination 5)
+            elif((self.higher_high_counter == 0) and ( self.higher_low_counter == 0) and (self.lower_low_counter == 1) and (self.lower_high_counter == 1)):
+                new_state = trend_state.possible_uptrend_reversal
+
+            #State :6 -> 2 (combination 6)
+            elif((self.higher_high_counter == 0) and (self.higher_low_counter == 0) and (self.lower_low_counter == 2) and (self.lower_high_counter == 1)):
+                new_state = trend_state.possible_uptrend_reversal
+
+            ##############################################################################################
+
+            #State:6 -> 4 (combination 1)
+            elif((self.higher_high_counter == 1) and ( self.higher_low_counter == 0) and (self.lower_low_counter >= 2) and (self.lower_high_counter == 0)):
+                new_state = trend_state.possible_downtrend_reversal
+
+            #State:6 -> 4 (combination 2)
+            elif((self.higher_high_counter == 1) and ( self.higher_low_counter == 1) and (self.lower_low_counter == 0) and (self.lower_high_counter == 0)):
+                new_state = trend_state.possible_downtrend_reversal
+
+            #State:6 -> 4 (combination 3)
+            elif((self.higher_high_counter == 2) and ( self.higher_low_counter == 1) and (self.lower_low_counter == 0) and (self.lower_high_counter == 0)):
+                new_state = trend_state.possible_downtrend_reversal
+
+            #State:6 -> 4 (combination 4)
+            elif((self.higher_high_counter == 0) and ( self.higher_low_counter == 1) and (self.lower_low_counter == 0) and (self.lower_high_counter >= 2)):
+                new_state = trend_state.possible_downtrend_reversal
+
+            #State:6 -> 4 (combination 5)
+            elif((self.higher_high_counter == 1) and ( self.higher_low_counter == 1) and (self.lower_low_counter == 0) and (self.lower_high_counter == 0)):
+                new_state = trend_state.possible_downtrend_reversal
+
+            #State:6 -> 4 (combination 6)
+            elif((self.higher_high_counter == 1) and (self.higher_low_counter == 2) and (self.lower_low_counter == 0) and (self.lower_high_counter == 0)):
+                new_state = trend_state.possible_downtrend_reversal
+
+            #State:6 -> 6 
+            elif((self.higher_high_counter >= 2) and (self.higher_low_counter == 0) and (self.lower_low_counter >= 2) and (self.lower_high_counter == 0)):
+                new_state = trend_state.volitility_expansion
+
+            #Should not end up here but logic could be flawed
+            else:
+                new_state = trend_state.debug
 
 
         #State 7: starting_state
-        if(last_state == trend_state.starting_state):
+        elif(last_state == trend_state.starting_state):
             
             #Can only go to state 1 or 3 or stay same
             #State :7 -> 1
@@ -540,8 +691,12 @@ class Trend(Stock):
                 new_state = last_state
 
         #State 8: debug# Used for troubleshooting
-        if((last_state == trend_state.debug) or (new_state == None)):
+        elif((last_state == trend_state.debug) or (new_state == None) or (new_state == trend_state.debug)):            
             logging.error("Error: Reached State 8 (New State likelly not set correctly in state machine)")
+
+        #Log Error if state can not be detected
+        else:
+            logging.error("Error: Could not Sort into current state in state machine")
 
 
 ############################################################################################################
@@ -597,8 +752,6 @@ def main():
     market_health.get_ema_health(api, index_group)
     market_health.get_price_estimate(api, index_group)
     market_health.get_starting_trend(api, index_group)
-
-    #print("TEST FROM MAIN FUNCTION", index_group.stock_objects_array[3].name, index_group.stock_objects_array[3].EMA_21)
 
     #Test Print Object Funciton
     index_group.print_group_data()
