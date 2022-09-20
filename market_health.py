@@ -280,6 +280,9 @@ def get_starting_trend(api, group):
     for stock_obj in group.stock_objects_array:
 
         dataset_daily = get_Dataset_D(api, stock_obj, DATA_PERIOD_DAY)
+        stock_obj.current_timeframe_string = "Day"
+        stock_obj.dataset = dataset_daily
         stock_obj.determine_ititial_trend()
+
         
         

@@ -45,7 +45,7 @@ ORDERS_URL = "{}/v2/orders".format(BASE_URL)
 HEADERS = {'APCA-API-KEY-ID': API_KEY, 'APCA-API-SECRET-KEY': SECRET_KEY}
 
 #Set log level to INFO to debug (WARNING is default)
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 
 ############################################################################################################
 ############################################################################################################
@@ -90,7 +90,7 @@ class Group:
 
         print ('\033[1m') #Bold FONT ON
         print("Group:", self.name_group)
-        print('{:<10} {:^15} {:^15} {:^20} {:^20} {:^20} {:^30}'.format("Name", "Trend", "Est. Price", "21 EMA" , "9 EMA", temp_string_ld, temp_string_sd))
+        print('{:<10} {:^25} {:^15} {:^20} {:^20} {:^20} {:^30}'.format("Name", "Trend", "Est. Price", "21 EMA" , "9 EMA", temp_string_ld, temp_string_sd))
         print ('\033[0m') #Bold FONT OFF
 
         #Print Attributes For the Stock
@@ -110,6 +110,8 @@ class Stock(Group):
         self.strategy = strategy
         self.dataset = data_temp
         self.current_timeframe_string = current_timeframe_string 
+
+
         
         #If a trend starting value is provided, create object with it
         if(current_trend != None):
@@ -151,7 +153,7 @@ class Stock(Group):
 
         #Try to print attributes if populated
         try:
-            print('{:<10} {:^15} {:^15} {:^20} {:^20} {:^20} {:^30}'.format(str(self.name), str(self.trend.print_trend_D()), str(self.current_price_estimate), round(self.EMA_21, 2), round(self.EMA_9, 2), self.distribution_Long_len, self.distribution_Short_len))
+            print('{:<10} {:^25} {:^15} {:^20} {:^20} {:^20} {:^30}'.format(str(self.name), str(self.trend.print_trend_D()), str(self.current_price_estimate), round(self.EMA_21, 2), round(self.EMA_9, 2), self.distribution_Long_len, self.distribution_Short_len))
 
         except Exception as Argument:
             logging.exception("Error occured printing stock attributes. (Stock Attributes may not be populated)")
@@ -167,7 +169,7 @@ class Stock(Group):
         ############################################################################################################################
         ####   CONSTRUCTION START   ####
         NUM_CANDLES = len(self.dataset)
-        SKIP_INCREMENT = 2 #Every other candle
+        SKIP_INCREMENT = 1 #Every other candle
         MODE = None #True = Looking for next relative High. False = Looking for next relative Low
         #last_high = None
         #last_low = None
@@ -178,7 +180,13 @@ class Stock(Group):
         #Start trend itteration at the first candle
         i = 0 + SKIP_INCREMENT
         while(i < NUM_CANDLES):
-            
+            print("i is: ", i)   #test print
+            print("The mode is: ", MODE)
+            print("last high: ", self.trend.last_high)          
+            print("last low: ", self.trend.last_low)
+            print("Size of dataset: ", NUM_CANDLES)
+            print("\n")
+
             #Edge Case: Evaluating first candle, determine initial direction and set MODE
             if(i == SKIP_INCREMENT):
 
@@ -186,24 +194,36 @@ class Stock(Group):
                 if(self.dataset[i] > self.dataset[i - SKIP_INCREMENT]):
                     MODE = True
                     self.trend.last_high = self.dataset[0]
+                    self.trend.last_low = self.dataset[0]
 
                 #direction down initially
                 else:
                     MODE = False
                     self.trend.last_low = self.dataset[0]
+                    self.trend.last_high = self.dataset[0]
             ###end endge case if
 
             #Determine if we are looking for Relative High or Relative Low
             #Looking for High, if current candle is higher mark as new high
+            print("i value passsed in function: ", i)
             array = self.find_pivot(i, MODE, SKIP_INCREMENT)
             i = array[0]
-            self.process_pivot(array[1], MODE)
-            
-            #Negate the MODE
-            MODE = not MODE
+            print("After return from function i is: ", i)
 
-            #Update the Trend State Machine
-            self.trend.update_state()
+            #Only process pivot and update_state if a pivot is actually returned
+            if(array[1] != None):
+                
+                self.process_pivot(array[1], MODE)
+            
+                 #Negate the MODE
+                MODE = not MODE
+
+                #Update the Trend State Machine
+                self.trend.update_state()
+            
+            elif(array[1] == None):
+                logging.info("We have reached end of dataset for computing pinvots")
+                pass
 
             i = i + SKIP_INCREMENT
         #### END OF WHILE
@@ -312,8 +332,13 @@ class Stock(Group):
             i = i + 1 #increment the counter
         #end while
 
+        #edge case: We have reached end of dataset
+        if(i == NUM_CANDLES):
+            pivot = None
+            return_index = i
+
         #Send pivot index and Price back
-        if(mode == True):
+        elif(mode == True):
             pivot = self.trend.new_high
             return_index = i - HIGH_CONFIRM
 
@@ -322,6 +347,12 @@ class Stock(Group):
             return_index = i - LOW_CONFIRM
         
         return [return_index, pivot]
+
+    #Set child class timeframe
+    def set_timeframe_initial(self):
+
+        self.trend.reset_trend_markers
+        self.trend.current_timeframe_string = self.current_timeframe_string
 
 ############################################################################################################
 ############################################################################################################
@@ -351,7 +382,7 @@ class trend_state(Enum):
 
 class Trend(Stock):
 
-    def __init__(self, trend_child_Week = trend_state.starting_state, current_trend = trend_state.starting_state, trend_hour = trend_state.starting_state, trend_30min = trend_state.starting_state, trend_15min = trend_state.starting_state, trend_5min = trend_state.starting_state, trend_1min = trend_state.starting_state, higher_high_counter = 0, lower_low_counter = 0, higher_low_counter = 0, lower_high_counter = 0):
+    def __init__(self, trend_child_Week = trend_state.starting_state, current_trend = trend_state.starting_state, trend_hour = trend_state.starting_state, trend_30min = trend_state.starting_state, trend_15min = trend_state.starting_state, trend_5min = trend_state.starting_state, trend_1min = trend_state.starting_state, higher_high_counter = 0, lower_low_counter = 0, higher_low_counter = 0, lower_high_counter = 0, current_timeframe_string = 'Day'):
         
         #Trend Attributes for Different TimeFrames
         self.trend_child_Week = trend_child_Week
@@ -361,6 +392,8 @@ class Trend(Stock):
         self.trend_child_15min = trend_15min
         self.trend_child_5min = trend_5min
         self.trend_child_1min = trend_1min
+
+        self.current_timeframe_string = current_timeframe_string
 
         #For Computations and Determing Trend
         self.higher_high_counter = higher_high_counter
@@ -697,6 +730,10 @@ class Trend(Stock):
         #Log Error if state can not be detected
         else:
             logging.error("Error: Could not Sort into current state in state machine")
+
+        
+        #return the new state
+        return new_state
 
 
 ############################################################################################################
