@@ -13,8 +13,11 @@ import alpaca_trade_api as tradeapi #addded line
 import pytz #to get date
 from alpaca_trade_api.rest import REST, TimeFrame
 import time
+import math #for rounding
+
 #import computations.market_health as market_health #added line
 #from market_health import *
+import strategy
 import market_health
 from config import *
 import logging #for try-except blocks
@@ -90,7 +93,7 @@ class Group:
 
         print ('\033[1m') #Bold FONT ON
         print("Group:", self.name_group)
-        print('{:<10} {:^25} {:^15} {:^20} {:^20} {:^20} {:^30}'.format("Name", "Trend", "Est. Price", "21 EMA" , "9 EMA", temp_string_ld, temp_string_sd))
+        print('{:<7} {:^25} {:^30} {:^30} {:^15} {:^12} {:^12} {:^12} {:^15}'.format("Name", "Trend (Daily)", "Trend (Hourly)", "Trend (Minute)","Est. Price", "21 EMA" , "9 EMA", temp_string_ld, temp_string_sd))
         print ('\033[0m') #Bold FONT OFF
 
         #Print Attributes For the Stock
@@ -153,7 +156,7 @@ class Stock(Group):
 
         #Try to print attributes if populated
         try:
-            print('{:<10} {:^25} {:^15} {:^20} {:^20} {:^20} {:^30}'.format(str(self.name), str(self.trend.print_trend_D()), str(self.current_price_estimate), round(self.EMA_21, 2), round(self.EMA_9, 2), self.distribution_Long_len, self.distribution_Short_len))
+            print('{:<7} {:^25} {:^30} {:^30} {:^15} {:^12} {:^12} {:^12} {:^15}'.format(str(self.name), str(self.trend.print_trend_D()), str(self.trend.trend_child_Hour.name), str(self.trend.trend_child_1min.name), str(self.current_price_estimate), round(self.EMA_21, 2), round(self.EMA_9, 2), self.distribution_Long_len, self.distribution_Short_len))
 
         except Exception as Argument:
             logging.exception("Error occured printing stock attributes. (Stock Attributes may not be populated)")
@@ -220,9 +223,10 @@ class Stock(Group):
 
                 #Update the Trend State Machine
                 self.trend.update_state()
+                print("Current State is: ", self.trend.trend_child_Day.name)
             
             elif(array[1] == None):
-                logging.info("We have reached end of dataset for computing pinvots")
+                logging.info("We have reached end of dataset for computing pivots")
                 pass
 
             i = i + SKIP_INCREMENT
@@ -298,7 +302,7 @@ class Stock(Group):
             if(mode == True):
 
                 #If new temp_high was made
-                if(self.dataset[i] > self.trend.new_high):
+                if(self.dataset[i] >= self.trend.new_high):
                     self.trend.new_high = self.dataset[i]
                     up_counter = 0 #reset counter since new highs being made
 
@@ -316,7 +320,7 @@ class Stock(Group):
             elif(mode == False):
                   
                 #If new temp_low was made
-                if(self.dataset[i] < self.trend.new_low):
+                if(self.dataset[i] <= self.trend.new_low):
                     self.trend.new_low = self.dataset[i]
                     down_counter = 0 #reset counter since new highs being made
 
@@ -351,7 +355,7 @@ class Stock(Group):
     #Set child class timeframe
     def set_timeframe_initial(self):
 
-        self.trend.reset_trend_markers
+        self.trend.reset_trend_markers()
         self.trend.current_timeframe_string = self.current_timeframe_string
 
 ############################################################################################################
@@ -415,6 +419,14 @@ class Trend(Stock):
         self.higher_low_counter = 0
         self.lower_low_counter = 0
         self.lower_high_counter = 0
+        self.reset_trackers() #reset for different timeframe
+
+    def reset_trackers(self):
+        self.last_high = None
+        self.last_low = None
+        self.new_high = None
+        self.new_low = None
+
 
     #Print Main Daily Trend
     def print_trend_D(self):
@@ -642,7 +654,9 @@ class Trend(Stock):
 
             #Should not end up here but logic could be flawed
             else:
-                new_state = trend_state.debug
+                logging.error("Error: Debug State Sent from state 5")
+                #new_state = trend_state.debug
+                new_state = last_state
 
         #State 6: volitility_expansion
         elif(last_state == trend_state.volitility_expansion):
@@ -704,7 +718,15 @@ class Trend(Stock):
 
             #Should not end up here but logic could be flawed
             else:
-                new_state = trend_state.debug
+                logging.error("Error: Debug State Sent from State 6")
+                print("Debug Counters: ")
+
+                print("Debug HH_COUNT: ", self.higher_high_counter)
+                print("Debug HL_COUNT: ", self.higher_low_counter)
+                print("Debug LL_COUNT: ", self.lower_low_counter)
+                print("Debug LH_COUNT: ", self.lower_high_counter)
+                #new_state = trend_state.debug
+                new_state = last_state
 
 
         #State 7: starting_state
@@ -726,6 +748,7 @@ class Trend(Stock):
         #State 8: debug# Used for troubleshooting
         elif((last_state == trend_state.debug) or (new_state == None) or (new_state == trend_state.debug)):            
             logging.error("Error: Reached State 8 (New State likelly not set correctly in state machine)")
+            new_state = last_state #temporary bug fix to continue computation
 
         #Log Error if state can not be detected
         else:
@@ -744,30 +767,103 @@ def get_account():
 
     return json.loads(r.content)
 
-def create_order(symbol, qty, side, type, time_in_force):
+##################################################################################
+##################################################################################
+#Creating orders
+def create_order(side, symbol, qty, take_profit, stop_loss):
 
     data = {
-            "symbol": symbol,
-            "qty": qty,
             "side": side,
-            "type": type,
-            "time_in_force": time_in_force
+            "symbol": symbol,
+            "type": "market",
+            "qty": qty,
+            "time_in_force": "gtc",
+            "order_class": "bracket",
+            "take_profit": {
+                "limit_price": take_profit
+            },
+            "stop_loss": {
+                "stop_price": stop_loss,
+                "limit_price": (stop_loss - .25)
+            }             
     }
 
     r = requests.post(ORDERS_URL, json=data ,headers = HEADERS)
 
     return json.loads(r.content)
-
+##################################################################################
+##################################################################################
+###    Get the orders    ####
 def get_orders():
     r = requests.get(ORDERS_URL,headers=HEADERS)
     return json.loads(r.content)
 
+##################################################################################
+##################################################################################
+####    Populates the Attributes for the Stocks in the Group   ####
+def get_group_data(api, group_name):
 
+    market_health.get_distribution_health(api, group_name)
+    market_health.get_ema_health(api, group_name)
+    market_health.get_price_estimate(api, group_name)
+    market_health.get_starting_trends(api, group_name)
+
+
+##################################################################################
+##################################################################################
+
+def place_trade_basic(api, group):
+
+    #Get account information
+    account = api.get_account()
+    account_balance = float(account.equity)
+    POSITION_SIZE = account_balance *(.05)
+    print("\n\nBuying power is: ", account_balance)
+
+
+    #Only if the stock market is open place a trade
+    ####################################################################################
+    clock = api.get_clock()
+
+    #Determine if market is OPEN OR CLOSES
+    #IF market OPEN, place the trades
+    if(clock.is_open):
+
+        #If the criteria is met for LONG or SHORT place trades
+        for stock_obj in group.stock_objects_array:
+
+            #If we are going LONG buy 5% portfolio position.  2% take profit, 1% stop loss
+            if(stock_obj.strategy == "LONG"):
+
+                take_profit_temp = stock_obj.current_price_estimate * 1.02
+                stop_loss_temp = stock_obj.current_price_estimate - (.02 * stock_obj.current_price_estimate)
+
+                create_order(side = "buy", symbol = stock_obj.name, qty = math.floor(POSITION_SIZE / (stock_obj.current_price_estimate)), take_profit = take_profit_temp , stop_loss = stop_loss_temp)
+
+            #If we are going SHORT sell a 5% position
+            elif(stock_obj.strategy == "SHORT"):
+
+                take_profit_temp = stock_obj.current_price_estimate - (.02 * stock_obj.current_price_estimate)
+                stop_loss_temp = stock_obj.current_price_estimate * 1.01
+
+                create_order(side = "sell", symbol = stock_obj.name, qty = math.floor(POSITION_SIZE / (stock_obj.current_price_estimate)), take_profit = take_profit_temp , stop_loss = stop_loss_temp)
+
+    ###################################################################################################
+    #market is CLOSED. Do not place trades 
+    else:
+        logging.error("Market is NOT open. Trade can NOT be placed (Try between 9:30AM and 4PM)")
+        logging.error("If using free API endpoint, try between 9:45AM and 3:45PM")
+
+
+##################################################################################
+##################################################################################
+####    Main Fucntion to run ALGO   ####
 def main():
+
     ###################################################################
     #Modify the lists below...
     index_names_array = ['SPY', 'QQQ', 'IWM', 'IWO', 'DIA']
-
+    ###################################################################
 
     #Creat REST object by pasing API KEYS
     api = tradeapi.REST(API_KEY, SECRET_KEY, BASE_URL, api_version='v2')
@@ -785,18 +881,13 @@ def main():
     #print(orders)
     #print ("New TEST: \n\n\n")
 
-    market_health.get_distribution_health(api, index_group)
-    market_health.get_ema_health(api, index_group)
-    market_health.get_price_estimate(api, index_group)
-    market_health.get_starting_trend(api, index_group)
-
-    #Test Print Object Funciton
+    get_group_data(api, index_group)
     index_group.print_group_data()
-    
 
+    #Run a basic strategy
+    strategy.trade_basic(api, index_group)
+    place_trade_basic(api, index_group)
 
-
-    #Populate index_group
 
 
 main()

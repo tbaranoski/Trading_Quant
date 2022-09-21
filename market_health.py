@@ -270,8 +270,58 @@ def get_Dataset_D(api, stock, DATA_PERIOD = 260):
 
 ################################################################################################################
 ################################################################################################################
+######    Gets the baset for the Hourly or Minute Timeframe   ####
+def get_Dataset_IntraDay(api, stock, DATA_PERIOD = 260, temp_timeframe = "Hour"):
+
+    timeNow = dt.datetime.now(pytz.timezone('US/Eastern'))
+    start_time_hours = None
+    timeframe = None
+
+    #Determine what start time should be based on timeframe. Pull extra bars for one minute timeframe in case we are computing after hours
+
+    if(temp_timeframe == "Hour"):
+        start_time_hours = (timeNow - dt.timedelta(hours=DATA_PERIOD)).isoformat()
+        timeframe = TimeFrame.Hour
+
+    elif(temp_timeframe == "1min"):
+        DATA_PERIOD = DATA_PERIOD * 3
+        start_time_hours = (timeNow - dt.timedelta(hours=DATA_PERIOD / 60)).isoformat()
+        timeframe = TimeFrame.Minute
+    else:
+        logging.ERROR("Timeframe in get_Dataset_IntraDay() Not Recognized")
+
+
+    #Determine IntraDay Trend bars for that timeframe
+    temp_intra_BARSET = api.get_bars(stock.name, timeframe, start = start_time_hours, end = None, limit = DATA_PERIOD)
+    temp_intra_BARSET_PARSED = parse_closes(temp_intra_BARSET)
+
+
+    #Store attribute and return dataset
+    stock.dataset = temp_intra_BARSET_PARSED
+    return temp_intra_BARSET_PARSED
+
+
+################################################################################################################
+################################################################################################################
+
+
+
+#### Initialzes the timeframe, dataset for that timeframe(candle closes) and clears markers
+def initialize_trend_data(stock_obj, timeframe_string, dataset):
+    
+    #Manually set timefram and initialize via function
+    stock_obj.current_timeframe_string = timeframe_string
+    stock_obj.set_timeframe_initial()
+
+    #Set dataset
+    del stock_obj.dataset
+    stock_obj.dataset = dataset
+
+################################################################################################################
+################################################################################################################
+
 ### Use historical data to determine the current trend on specified timeframe(s)   ####
-def get_starting_trend(api, group):
+def get_starting_trends(api, group):
 
     #Function Constants (Amount of bars taken for computations)
     DATA_PERIOD_DAY = 260 
@@ -280,9 +330,24 @@ def get_starting_trend(api, group):
     for stock_obj in group.stock_objects_array:
 
         dataset_daily = get_Dataset_D(api, stock_obj, DATA_PERIOD_DAY)
-        stock_obj.current_timeframe_string = "Day"
-        stock_obj.dataset = dataset_daily
+        initialize_trend_data(stock_obj, "Day", dataset_daily)
         stock_obj.determine_ititial_trend()
 
-        
-        
+    #####################################################################
+    #For each stock Get Hourly Timeframe
+    for stock_obj in group.stock_objects_array:
+
+        dataset_hourly = get_Dataset_IntraDay(api, stock_obj, DATA_PERIOD_DAY, "Hour")
+        initialize_trend_data(stock_obj, "Hour", dataset_hourly)
+        stock_obj.determine_ititial_trend()
+
+    #####################################################################
+    #For each stock Get Minute Timeframe
+    for stock_obj in group.stock_objects_array:
+
+        dataset_min = get_Dataset_IntraDay(api, stock_obj, DATA_PERIOD_DAY, "1min")
+        initialize_trend_data(stock_obj, "1min", dataset_min)
+        stock_obj.determine_ititial_trend()
+
+
+
