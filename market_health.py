@@ -97,7 +97,10 @@ def get_distribution_health(api, group):
     #for every stock in the group, calculate Distribution Day Count. Used primarilly For Major Indexes ($SPY, $QQQ, $DIA, $IWO, $IWM)
     # over a longer period (currentlly lsast 25 days) and over a shorter period (last 7 days)
     for stock in group.stock_objects_array:
-        print("name******* :", stock.name)
+
+        #logging message to print names being processed
+        temp_string = "DATA BEING COLLECTED FOR" + stock.name + "object *********"
+        logging.info(temp_string)
         
         #Get DAILY BARS for stock
         temp_D_BARSET = api.get_bars(stock.name, TimeFrame.Day, start = start_time_long_distribution.isoformat(), end = None, limit = LONG_DISTRIBUTION)

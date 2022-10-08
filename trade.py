@@ -48,7 +48,7 @@ ORDERS_URL = "{}/v2/orders".format(BASE_URL)
 HEADERS = {'APCA-API-KEY-ID': API_KEY, 'APCA-API-SECRET-KEY': SECRET_KEY}
 
 #Set log level to INFO to debug (WARNING is default)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 ############################################################################################################
 ############################################################################################################
@@ -88,12 +88,12 @@ class Group:
 
     def print_group_data(self):
 
-        temp_string_ld = "Distribution ("  + str(market_health.LONG_DISTRIBUTION_NUMBER) + " Day)"
-        temp_string_sd = "Distribution ("  + str(market_health.SHORT_DISTRIBUTION_NUMBER) + " Day)"
+        temp_string_ld = "Distr " + str(market_health.LONG_DISTRIBUTION_NUMBER) + "D"
+        temp_string_sd = "Distr" + str(market_health.SHORT_DISTRIBUTION_NUMBER) + "D"
 
         print ('\033[1m') #Bold FONT ON
         print("Group:", self.name_group)
-        print('{:<7} {:^25} {:^30} {:^30} {:^15} {:^12} {:^12} {:^12} {:^15}'.format("Name", "Trend (Daily)", "Trend (Hourly)", "Trend (Minute)","Est. Price", "21 EMA" , "9 EMA", temp_string_ld, temp_string_sd))
+        print('{:<7} {:^30} {:^30} {:^30} {:^12} {:^12} {:^12} {:^12} {:^15}'.format("Name", "Trend (Daily)", "Trend (Hourly)", "Trend (Minute)","Est. Price", "21 EMA" , "9 EMA", temp_string_ld, "strategy"))
         print ('\033[0m') #Bold FONT OFF
 
         #Print Attributes For the Stock
@@ -156,7 +156,14 @@ class Stock(Group):
 
         #Try to print attributes if populated
         try:
-            print('{:<7} {:^25} {:^30} {:^30} {:^15} {:^12} {:^12} {:^12} {:^15}'.format(str(self.name), str(self.trend.print_trend_D()), str(self.trend.trend_child_Hour.name), str(self.trend.trend_child_1min.name), str(self.current_price_estimate), round(self.EMA_21, 2), round(self.EMA_9, 2), self.distribution_Long_len, self.distribution_Short_len))
+
+            if(self.strategy != None):
+                strat_print = self.strategy
+
+            else:
+                strat_print = "N/A"
+            
+            print('{:<7} {:^30} {:^30} {:^30} {:^12} {:^12} {:^12} {:^12} {:^15}'.format(str(self.name), str(self.trend.print_trend_D()), str(self.trend.trend_child_Hour.name), str(self.trend.trend_child_1min.name), str(self.current_price_estimate), round(self.EMA_21, 2), round(self.EMA_9, 2), self.distribution_Long_len, strat_print))
 
         except Exception as Argument:
             logging.exception("Error occured printing stock attributes. (Stock Attributes may not be populated)")
@@ -183,12 +190,12 @@ class Stock(Group):
         #Start trend itteration at the first candle
         i = 0 + SKIP_INCREMENT
         while(i < NUM_CANDLES):
-            print("i is: ", i)   #test print
-            print("The mode is: ", MODE)
-            print("last high: ", self.trend.last_high)          
-            print("last low: ", self.trend.last_low)
-            print("Size of dataset: ", NUM_CANDLES)
-            print("\n")
+            #print("i is: ", i)   #test print
+            #print("The mode is: ", MODE)
+            #print("last high: ", self.trend.last_high)          
+            #print("last low: ", self.trend.last_low)
+            #print("Size of dataset: ", NUM_CANDLES)
+            #print("\n")
 
             #Edge Case: Evaluating first candle, determine initial direction and set MODE
             if(i == SKIP_INCREMENT):
@@ -206,12 +213,19 @@ class Stock(Group):
                     self.trend.last_high = self.dataset[0]
             ###end endge case if
 
+            #logging
+            temp_str = "i value passsed in function:" + str(i)
+            logging.info(temp_str) 
+
+
             #Determine if we are looking for Relative High or Relative Low
             #Looking for High, if current candle is higher mark as new high
-            print("i value passsed in function: ", i)
             array = self.find_pivot(i, MODE, SKIP_INCREMENT)
             i = array[0]
-            print("After return from function i is: ", i)
+
+            #logging
+            temp_str = "After return from function i is: " + str(i)
+            logging.info(temp_str)   # consturction line
 
             #Only process pivot and update_state if a pivot is actually returned
             if(array[1] != None):
@@ -223,7 +237,10 @@ class Stock(Group):
 
                 #Update the Trend State Machine
                 self.trend.update_state()
-                print("Current State is: ", self.trend.trend_child_Day.name)
+
+                #logging line
+                temp_string = "Current State is: " + self.trend.trend_child_Day.name
+                logging.info(temp_string)
             
             elif(array[1] == None):
                 logging.info("We have reached end of dataset for computing pivots")
@@ -770,27 +787,28 @@ def get_account():
 ##################################################################################
 ##################################################################################
 #Creating orders
-def create_order(side, symbol, qty, take_profit, stop_loss):
+def create_order(side, symbol, qty, take_profit, stop_loss, api):
 
-    data = {
-            "side": side,
-            "symbol": symbol,
-            "type": "market",
-            "qty": qty,
-            "time_in_force": "gtc",
-            "order_class": "bracket",
-            "take_profit": {
-                "limit_price": take_profit
-            },
-            "stop_loss": {
-                "stop_price": stop_loss,
-                "limit_price": (stop_loss - .25)
-            }             
-    }
+    #data = {
+            #"side": side,
+            #"symbol": symbol,
+            #"type": "market",
+            #"qty": qty,
+            #"time_in_force": "gtc",
+            #"order_class": "bracket",
+            #"take_profit": {
+                #"limit_price": take_profit
+            #},
+            #"stop_loss": {
+                #"stop_price": stop_loss,
+                #"limit_price": (stop_loss - .25)
+            #}             
+    #}
 
-    r = requests.post(ORDERS_URL, json=data ,headers = HEADERS)
+    api.submit_order(symbol = symbol, qty = qty, side = side, type = "market", time_in_force = 'gtc')
+    #r = requests.post(ORDERS_URL, json=data ,headers = HEADERS)
 
-    return json.loads(r.content)
+    #return json.loads(r.content)
 ##################################################################################
 ##################################################################################
 ###    Get the orders    ####
@@ -838,7 +856,8 @@ def place_trade_basic(api, group):
                 take_profit_temp = stock_obj.current_price_estimate * 1.02
                 stop_loss_temp = stock_obj.current_price_estimate - (.02 * stock_obj.current_price_estimate)
 
-                create_order(side = "buy", symbol = stock_obj.name, qty = math.floor(POSITION_SIZE / (stock_obj.current_price_estimate)), take_profit = take_profit_temp , stop_loss = stop_loss_temp)
+                create_order(side = "buy", symbol = stock_obj.name, qty = math.floor(POSITION_SIZE / (stock_obj.current_price_estimate)), take_profit = take_profit_temp , stop_loss = stop_loss_temp, api = api)
+                print("Algorithm just bought: ",stock_obj.name)
 
             #If we are going SHORT sell a 5% position
             elif(stock_obj.strategy == "SHORT"):
@@ -846,7 +865,8 @@ def place_trade_basic(api, group):
                 take_profit_temp = stock_obj.current_price_estimate - (.02 * stock_obj.current_price_estimate)
                 stop_loss_temp = stock_obj.current_price_estimate * 1.01
 
-                create_order(side = "sell", symbol = stock_obj.name, qty = math.floor(POSITION_SIZE / (stock_obj.current_price_estimate)), take_profit = take_profit_temp , stop_loss = stop_loss_temp)
+                create_order(side = "sell", symbol = stock_obj.name, qty = math.floor(POSITION_SIZE / (stock_obj.current_price_estimate)), take_profit = take_profit_temp , stop_loss = stop_loss_temp, api = api)
+                print("Algorithm just sold: ",stock_obj.name)
 
     ###################################################################################################
     #market is CLOSED. Do not place trades 
@@ -867,26 +887,30 @@ def main():
 
     #Creat REST object by pasing API KEYS
     api = tradeapi.REST(API_KEY, SECRET_KEY, BASE_URL, api_version='v2')
-    #account = api.get_account()
-    #print (account)
 
-
+    ###########################################################################
+    ####    MODIFY BELOW CODE   ####
     #Create Index Group
     index_group = Group()
     index_group.create_group(index_names_array, name_group = "Indexes")
-    index_group.print_group_names()
-
-    #print ("test!!!")
-    #orders = get_orders()
-    #print(orders)
-    #print ("New TEST: \n\n\n")
+    
 
     get_group_data(api, index_group)
-    index_group.print_group_data()
 
     #Run a basic strategy
     strategy.trade_basic(api, index_group)
     place_trade_basic(api, index_group)
+
+    index_group.print_group_data()
+
+    ##########################
+    #Get Positions
+    #print("\n\n")
+    #portfolio = api.list_positions()
+
+    #print positions
+    #for position in portfolio:
+        #print("{} shares of {}".format(position.qty, position.symbol))
 
 
 
