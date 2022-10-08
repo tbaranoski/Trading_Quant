@@ -100,14 +100,13 @@ class Group:
 
         print ('\033[1m') #Bold FONT ON
         print("Group:", self.name_group)
-        print('{:<7} {:^30} {:^30} {:^30} {:^12} {:^12} {:^12} {:^12} {:^15}'.format("Name", "Trend (Daily)", "Trend (Hourly)", "Trend (Minute)","Est. Price", "21 EMA" , "9 EMA", temp_string_ld, "strategy"))
+        print('{:<7} {:^30} {:^30} {:^30} {:^10} {:^10} {:^10} {:^10} {:^10} {:^10} {:^15}'.format("Name", "Trend (Daily)", "Trend (Hourly)", "Trend (Minute)","Est. Price", "21 EMA" , "9 EMA", "200 SMA", "50 SMA", temp_string_ld, "strategy"))
         print ('\033[0m') #Bold FONT OFF
 
         #Print Attributes For the Stock
         for temp_name in self.stock_objects_array:
             temp_name.print_attributes()
         
-        print("\n")
 
 #Create stock class (Child Class) to store the key data that will be used in the trading strategy.
 #This will allow us to choose different strategies to use for different stocks
@@ -117,12 +116,13 @@ class Stock(Group):
         self.current_price_estimate = current_price_estimate        
         self.EMA_21 = EMA_21
         self.EMA_9 = EMA_9
+        self.SMA_200 = None
+        self.SMA_50 = None
         self.distribution_Short_len = distribution_Short_len
         self.distribution_Long_len = distribution_Long_len
         self.strategy = strategy
         self.dataset = data_temp
         self.current_timeframe_string = current_timeframe_string 
-
 
         
         #If a trend starting value is provided, create object with it
@@ -172,7 +172,7 @@ class Stock(Group):
             else:
                 strat_print = "N/A"
             
-            print('{:<7} {:^30} {:^30} {:^30} {:^12} {:^12} {:^12} {:^12} {:^15}'.format(str(self.name), str(self.trend.print_trend_D()), str(self.trend.trend_child_Hour.name), str(self.trend.trend_child_1min.name), str(self.current_price_estimate), round(self.EMA_21, 2), round(self.EMA_9, 2), self.distribution_Long_len, strat_print))
+            print('{:<7} {:^30} {:^30} {:^30} {:^10} {:^10} {:^10} {:^10} {:^10} {:^10} {:^15}'.format(str(self.name), str(self.trend.print_trend_D()), str(self.trend.trend_child_Hour.name), str(self.trend.trend_child_1min.name), str(self.current_price_estimate), round(self.EMA_21, 2), round(self.EMA_9, 2), self.SMA_200, self.SMA_50, self.distribution_Long_len, strat_print))
 
         except Exception as Argument:
             logging.exception("Error occured printing stock attributes. (Stock Attributes may not be populated)")
@@ -184,8 +184,16 @@ class Stock(Group):
     ##################################################################################################################################
     #Fucntion Analyzes data looking for Higher Highs, Higher Lows, Lower Lows and Lower Highs with Price Action
     def determine_ititial_trend(self):
+
+        #Debug Statements
         temp_debug = "STARTING TO COMPUTE initial_trend() FOR:  " + self.name
         logging.info(temp_debug)
+
+        #If market is not open and we don't have minute data or other timeframes print error
+        if(len(self.dataset) == 0):
+            temp_log = "Trend on Minute Timeframe for " + self.name + " could not be computed because market NOT OPEN (NOT ENOUGH MINUTE DATA)"
+            logging.error(temp_log)
+
         ############################################################################################################################
         ############################################################################################################################
         ####   CONSTRUCTION START   ####
@@ -848,6 +856,7 @@ def get_group_data(api, group_name):
     market_health.get_ema_health(api, group_name)
     market_health.get_price_estimate(api, group_name)
     market_health.get_starting_trends(api, group_name)
+    market_health.get_sma_health(api, group_name)
 
 
 ##################################################################################
@@ -914,30 +923,18 @@ def main():
 
     ###########################################################################
     ####    MODIFY BELOW CODE   ####
-    #Create Index Group
-
+    #Create Groups and Get Stock Datat
 
     index_group = Group(ticker_list= index_names_array, name_group = "Indexes")
-    #index_group.create_group(ticker_list = index_names_array, name_group = "Indexes")
-    get_group_data(api, index_group)
-
-    
-
-    #Duplicate Tech Group
     tech_group = Group(ticker_list= tech_names_array, name_group = "Technology")
-    #tech_group.create_group(ticker_list = tech_names_array, name_group = "Technology")
+    
+    get_group_data(api, index_group)
     get_group_data(api, tech_group)
 
-
+    #RUN STRATEGY ########################################################
     #Run a basic strategy
     #strategy.trade_basic(api, index_group)
     #place_trade_basic(api, index_group)
-
-    #START DEBUG#####
-    print(index_group.stock_objects_array)
-
-    #END DEBUG#####
-
 
     #Print Statements to print Group Data for Desired Groups
 

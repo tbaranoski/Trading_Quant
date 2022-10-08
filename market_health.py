@@ -31,9 +31,9 @@ LONG_DISTRIBUTION_NUMBER = 25
 SHORT_DISTRIBUTION_NUMBER = 7
 
 #CONSTANT COMPUTATIONS
-#To account for Sunday and Saturday which are not actual trading days. + 10 accounts for any holidays
-LONG_DISTRIBUTION = math.ceil((LONG_DISTRIBUTION_NUMBER *((7/5)) + 10))
-SHORT_DISTRIBUTION =  math.ceil((SHORT_DISTRIBUTION_NUMBER *((9/7)) + 10))
+#Extra Days added to account for weekend and Holidays
+LONG_DISTRIBUTION = math.ceil((LONG_DISTRIBUTION_NUMBER *((8/5)) + 10))
+SHORT_DISTRIBUTION =  math.ceil((SHORT_DISTRIBUTION_NUMBER *((8/5)) + 10))
 
 #############################################################################################################################################
 #Print Distribution Days for Major Indexes
@@ -298,7 +298,6 @@ def get_Dataset_IntraDay(api, stock, DATA_PERIOD = 260, temp_timeframe = "Hour")
     temp_intra_BARSET = api.get_bars(stock.name, timeframe, start = start_time_hours, end = None, limit = DATA_PERIOD)
     temp_intra_BARSET_PARSED = parse_closes(temp_intra_BARSET)
 
-
     #Store attribute and return dataset
     stock.dataset = temp_intra_BARSET_PARSED
     return temp_intra_BARSET_PARSED
@@ -352,5 +351,47 @@ def get_starting_trends(api, group):
         initialize_trend_data(stock_obj, "1min", dataset_min)
         stock_obj.determine_ititial_trend()
 
+#calculate SMAS
+def get_sma_health(api, group_name):
+    DATA_PERIOD_DAY = int((200 *(8/5)) + 10)
+
+    #Get Daily data
+    for name in group_name.stock_objects_array:
+        dataset_daily = get_Dataset_D(api, name, DATA_PERIOD_DAY)
+
+        #Get 200 SMA on Daily
+        sma_200 = sma(dataset_daily, 200, name.name)
+
+        #Get 50 SMA on Daily
+        sma_50 = sma(dataset_daily, 50, name.name)
+
+        #Store SMA attributes in stock object
+        name.SMA_200 = sma_200
+        name.SMA_50 = sma_50
+    
 
 
+
+def sma(data, length_sma , stock_name):
+
+    current_sma = None
+    length_data_set = len(data)
+    start_index = length_data_set - length_sma
+
+    #print(length_data_set)
+    #print(start_index)
+    #print(data[26])
+    #Try to Compute SMA if enough data is available
+    
+    total = 0
+    
+    try:
+        for i in range(start_index, length_data_set):
+            total = total + data[i]
+        current_sma = round(total / length_sma, 2)       
+
+    except:
+        temp_error = "SMA can not be computed for: " + stock_name
+        logging.error(temp_error)
+
+    return current_sma
