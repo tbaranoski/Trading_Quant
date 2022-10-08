@@ -48,20 +48,27 @@ ORDERS_URL = "{}/v2/orders".format(BASE_URL)
 HEADERS = {'APCA-API-KEY-ID': API_KEY, 'APCA-API-SECRET-KEY': SECRET_KEY}
 
 #Set log level to INFO to debug (WARNING is default)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 ############################################################################################################
 ############################################################################################################
     #Create Group Object (Parent Class) which will be used to store groups of different stocks to better performe quantitative analysis##### 
 class Group:
-    def __init__(self, stock_objects_array = [], name_group = None, sector = None, description = None):
+    def __init__(self, ticker_list = [], name_group = None, sector = None, description = None):
 
-        self.stock_objects_array = stock_objects_array
+
+        self.stock_objects_array = [] #Store Stock Objects (Child Class instance) #Essentially a decleration
+
+        #Try to create group if tickers are provided
+        if(len(ticker_list) != 0):
+            self.create_group(ticker_list = ticker_list, name_group = name_group)
+        #self.stock_objects_array = stock_objects_array
+
         self.name_group = name_group
         self.sector = sector
         self.description = description
         try:
-            self.num_in_group = len(stock_objects_array)
+            self.num_in_group = len(ticker_list)
         except:
             self.num_in_group = 0
 
@@ -852,7 +859,7 @@ def place_trade_basic(api, group):
     account = api.get_account()
     account_balance = float(account.equity)
     POSITION_SIZE = account_balance *(.05)
-    print("\n\nBuying power is: ", account_balance)
+    print("\n\nBuying power is: $", account_balance)
 
 
     #Only if the stock market is open place a trade
@@ -908,23 +915,34 @@ def main():
     ###########################################################################
     ####    MODIFY BELOW CODE   ####
     #Create Index Group
-    index_group = Group()
-    index_group.create_group(index_names_array, name_group = "Indexes")
+
+
+    index_group = Group(ticker_list= index_names_array, name_group = "Indexes")
+    #index_group.create_group(ticker_list = index_names_array, name_group = "Indexes")
     get_group_data(api, index_group)
 
+    
+
     #Duplicate Tech Group
-    tech_group = Group()
-    tech_group.create_group(tech_names_array, name_group = "Technology")
+    tech_group = Group(ticker_list= tech_names_array, name_group = "Technology")
+    #tech_group.create_group(ticker_list = tech_names_array, name_group = "Technology")
     get_group_data(api, tech_group)
 
 
     #Run a basic strategy
-    strategy.trade_basic(api, index_group)
-    place_trade_basic(api, index_group)
+    #strategy.trade_basic(api, index_group)
+    #place_trade_basic(api, index_group)
+
+    #START DEBUG#####
+    print(index_group.stock_objects_array)
+
+    #END DEBUG#####
+
 
     #Print Statements to print Group Data for Desired Groups
+
     index_group.print_group_data()
-    tech_group.print_group_data
+    tech_group.print_group_data()
 
     ##########################
     #Get Positions
