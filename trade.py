@@ -48,7 +48,7 @@ ORDERS_URL = "{}/v2/orders".format(BASE_URL)
 HEADERS = {'APCA-API-KEY-ID': API_KEY, 'APCA-API-SECRET-KEY': SECRET_KEY}
 
 #Set log level to INFO to debug (WARNING is default)
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 
 ############################################################################################################
 ############################################################################################################
@@ -99,6 +99,8 @@ class Group:
         #Print Attributes For the Stock
         for temp_name in self.stock_objects_array:
             temp_name.print_attributes()
+        
+        print("\n")
 
 #Create stock class (Child Class) to store the key data that will be used in the trading strategy.
 #This will allow us to choose different strategies to use for different stocks
@@ -175,6 +177,8 @@ class Stock(Group):
     ##################################################################################################################################
     #Fucntion Analyzes data looking for Higher Highs, Higher Lows, Lower Lows and Lower Highs with Price Action
     def determine_ititial_trend(self):
+        temp_debug = "STARTING TO COMPUTE initial_trend() FOR:  " + self.name
+        logging.info(temp_debug)
         ############################################################################################################################
         ############################################################################################################################
         ####   CONSTRUCTION START   ####
@@ -733,6 +737,18 @@ class Trend(Stock):
             elif((self.higher_high_counter >= 2) and (self.higher_low_counter == 0) and (self.lower_low_counter >= 2) and (self.lower_high_counter == 0)):
                 new_state = trend_state.volitility_expansion
 
+            #################### BUG_FIX ################################### 
+            #State:6 -> 4  
+            elif((self.higher_high_counter > 0) and (self.higher_low_counter > 0) and (self.lower_low_counter == 0) and (self.lower_high_counter == 0)):
+                new_state = trend_state.possible_downtrend_reversal
+
+            #State:6 -> 2 
+            elif((self.higher_high_counter == 0) and (self.higher_low_counter == 0) and (self.lower_low_counter > 0) and (self.lower_high_counter > 0)):
+                new_state = trend_state.possible_uptrend_reversal
+
+
+            ####################  BUG_FIX END ###################################
+
             #Should not end up here but logic could be flawed
             else:
                 logging.error("Error: Debug State Sent from State 6")
@@ -883,6 +899,7 @@ def main():
     ###################################################################
     #Modify the lists below...
     index_names_array = ['SPY', 'QQQ', 'IWM', 'IWO', 'DIA']
+    tech_names_array = ['AAPL', 'MSFT', 'TSLA', 'ROKU']
     ###################################################################
 
     #Creat REST object by pasing API KEYS
@@ -893,15 +910,21 @@ def main():
     #Create Index Group
     index_group = Group()
     index_group.create_group(index_names_array, name_group = "Indexes")
-    
-
     get_group_data(api, index_group)
+
+    #Duplicate Tech Group
+    tech_group = Group()
+    tech_group.create_group(tech_names_array, name_group = "Technology")
+    get_group_data(api, tech_group)
+
 
     #Run a basic strategy
     strategy.trade_basic(api, index_group)
     place_trade_basic(api, index_group)
 
+    #Print Statements to print Group Data for Desired Groups
     index_group.print_group_data()
+    tech_group.print_group_data
 
     ##########################
     #Get Positions

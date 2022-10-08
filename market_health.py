@@ -99,7 +99,7 @@ def get_distribution_health(api, group):
     for stock in group.stock_objects_array:
 
         #logging message to print names being processed
-        temp_string = "DATA BEING COLLECTED FOR" + stock.name + "object *********"
+        temp_string = "DATA BEING COLLECTED FOR " + stock.name + " object ******"
         logging.info(temp_string)
         
         #Get DAILY BARS for stock
