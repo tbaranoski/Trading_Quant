@@ -23,9 +23,7 @@ from config import *
 import logging #for try-except blocks
 from enum import Enum
 
-#imports for alpha_vantage package
-from alpha_vantage.alpha_vantage.timeseries import TimeSeries
-from alpha_vantage.alpha_vantage.techindicators import TechIndicators
+#other imports
 import matplotlib.pyplot as plt
 
 #test for alpha_vantage
