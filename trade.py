@@ -98,7 +98,7 @@ class Group:
 
         print ('\033[1m') #Bold FONT ON
         print("Group:", self.name_group)
-        print('{:<7} {:^30} {:^30} {:^30} {:^10} {:^10} {:^10} {:^10} {:^10} {:^10} {:^15}'.format("Name", "Trend (Daily)", "Trend (Hourly)", "Trend (Minute)","Est. Price", "21 EMA" , "9 EMA", "200 SMA", "50 SMA", temp_string_ld, "strategy"))
+        print('{:<7} {:^30} {:^30} {:^30} {:^30} {:^10} {:^10} {:^10} {:^10} {:^10} {:^10} {:^15}'.format("Name", "Trend (Weekly)", "Trend (Daily)", "Trend (Hourly)", "Trend (Minute)","Est. Price", "21 EMA" , "9 EMA", "200 SMA", "50 SMA", temp_string_ld, "strategy"))
         print ('\033[0m') #Bold FONT OFF
 
         #Print Attributes For the Stock
@@ -170,7 +170,7 @@ class Stock(Group):
             else:
                 strat_print = "N/A"
             
-            print('{:<7} {:^30} {:^30} {:^30} {:^10} {:^10} {:^10} {:^10} {:^10} {:^10} {:^15}'.format(str(self.name), str(self.trend.print_trend_D()), str(self.trend.trend_child_Hour.name), str(self.trend.trend_child_1min.name), str(self.current_price_estimate), round(self.EMA_21, 2), round(self.EMA_9, 2), self.SMA_200, self.SMA_50, self.distribution_Long_len, strat_print))
+            print('{:<7} {:^30} {:^30} {:^30} {:^30} {:^10} {:^10} {:^10} {:^10} {:^10} {:^10} {:^15}'.format(str(self.name), str(self.trend.trend_child_Week.name), str(self.trend.print_trend_D()), str(self.trend.trend_child_Hour.name), str(self.trend.trend_child_1min.name), str(self.current_price_estimate), round(self.EMA_21, 2), round(self.EMA_9, 2), self.SMA_200, self.SMA_50, self.distribution_Long_len, strat_print))
 
         except Exception as Argument:
             logging.exception("Error occured printing stock attributes. (Stock Attributes may not be populated)")
@@ -207,7 +207,7 @@ class Stock(Group):
         #Start trend itteration at the first candle
         i = 0 + SKIP_INCREMENT
         while(i < NUM_CANDLES):
-            #print("i is: ", i)   #test print
+            #print("i is: ", i, " for ", self.current_timeframe_string)   #test print
             #print("The mode is: ", MODE)
             #print("last high: ", self.trend.last_high)          
             #print("last low: ", self.trend.last_low)
@@ -908,7 +908,7 @@ def place_trade_basic(api, group):
 ##################################################################################
 ##################################################################################
 ####    Main Fucntion to run ALGO   ####
-def main():
+#def main():
 
     ###################################################################
     #Modify the lists below...
@@ -950,4 +950,4 @@ def main():
 
 
 
-main()
+#main()

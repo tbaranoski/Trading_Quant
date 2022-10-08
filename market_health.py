@@ -11,6 +11,7 @@
 ##########################################################################################################################################################
 #import alpaca_trade_api as tradeapi
 from asyncio.windows_events import NULL
+from calendar import week
 from unicodedata import name
 from alpaca_trade_api.rest import REST, TimeFrame
 import datetime as dt #to get date
@@ -272,6 +273,52 @@ def get_Dataset_D(api, stock, DATA_PERIOD = 260):
     return temp_D_BARSET_PARSED
 
 ################################################################################################################
+def get_Dataset_W(api, stock, DATA_PERIOD = 100):
+    timeNow = dt.datetime.now(pytz.timezone('US/Eastern'))
+    start_time = timeNow - dt.timedelta(weeks=DATA_PERIOD)
+    start_time_hours = (timeNow - dt.timedelta(hours=60)).isoformat()
+
+    #Determine Weekly trend by pulling daily bars
+    temp_W_BARSET = api.get_bars(stock.name, TimeFrame.Week, start = start_time.isoformat(), end = None, limit = DATA_PERIOD)
+    temp_W_BARSET_PARSED = parse_closes(temp_W_BARSET)
+
+    last_few_hours_temp = api.get_bars(stock.name, TimeFrame.Hour, start = start_time_hours, end = None, limit = 60)
+    last_few_hours_temp_C = parse_closes(last_few_hours_temp)
+
+    #Get Most Current Hourly Close and append to dataset
+    len_temp = len(last_few_hours_temp_C)
+    temp_price_now = last_few_hours_temp_C[len_temp - 1]
+    temp_W_BARSET_PARSED.append(temp_price_now)
+
+    #Store attribute and return dataset
+    stock.dataset = temp_W_BARSET_PARSED
+    return temp_W_BARSET_PARSED
+
+
+################################################################################################################
+def get_Dataset_3D(api, stock, DATA_PERIOD = 780):
+    timeNow = dt.datetime.now(pytz.timezone('US/Eastern'))
+    start_time = timeNow - dt.timedelta(days=DATA_PERIOD)
+    start_time_hours = (timeNow - dt.timedelta(hours=60)).isoformat()
+
+    #Determine 3 Day trend by pulling daily bars and take every three
+    temp_3D_BARSET = api.get_bars(stock.name, TimeFrame.Day, start = start_time.isoformat(), end = None, limit = DATA_PERIOD)
+    temp_3D_BARSET_PARSED = parse_closes(temp_3D_BARSET)
+
+    last_few_hours_temp = api.get_bars(stock.name, TimeFrame.Hour, start = start_time_hours, end = None, limit = 60)
+    last_few_hours_temp_C = parse_closes(last_few_hours_temp)
+
+    #Get Most Current Hourly Close and append to dataset
+    len_temp = len(last_few_hours_temp_C)
+    temp_price_now = last_few_hours_temp_C[len_temp - 1]
+    temp_3D_BARSET_PARSED.append(temp_price_now)
+
+    #Store attribute and return dataset
+    new_data = skip_parse(interval = 3, data = temp_3D_BARSET_PARSED)
+    #stock.dataset = temp_3D_BARSET_PARSED
+    return new_data
+
+
 ################################################################################################################
 ######    Gets the baset for the Hourly or Minute Timeframe   ####
 def get_Dataset_IntraDay(api, stock, DATA_PERIOD = 260, temp_timeframe = "Hour"):
@@ -305,8 +352,17 @@ def get_Dataset_IntraDay(api, stock, DATA_PERIOD = 260, temp_timeframe = "Hour")
 
 ################################################################################################################
 ################################################################################################################
+#Parses data by skipping by interval and removing data not needed to get custom timeframes
+def skip_parse(interval = 3, data = None):
+    
+    parsed_data = []
+    end_index = len(data) - 1 - interval
+    num_complete_intervals = math.floor((len(data) - interval) / interval)
+    
+    for i in range(interval ,end_index, interval): #might be wrong
+        parsed_data.append(data[i])
 
-
+    return parsed_data
 
 #### Initialzes the timeframe, dataset for that timeframe(candle closes) and clears markers
 def initialize_trend_data(stock_obj, timeframe_string, dataset):
@@ -351,6 +407,30 @@ def get_starting_trends(api, group):
         initialize_trend_data(stock_obj, "1min", dataset_min)
         stock_obj.determine_ititial_trend()
 
+    ###############################################################################
+    #####    CONSTRUCTOIN START    ################################################
+    #For each stock start by getting Weekly Data Set
+    #for stock_obj in group.stock_objects_array:
+
+        #dataset_weekly = get_Dataset_W(api, stock_obj, 100)
+        #initialize_trend_data(stock_obj, "Week", dataset_weekly)
+        #stock_obj.determine_ititial_trend()
+
+    #New temp Timeframe
+    #for stock_obj in group.stock_objects_array:
+    #stock_obj = group.stock_objects_array[0]
+    #dataset_3D = get_Dataset_3D(api, stock_obj, DATA_PERIOD_DAY * 3)
+    #print("\n\n\n\n")
+    #print(dataset_3D)
+
+        #initialize_trend_data(stock_obj, "1min", dataset_min)
+        #stock_obj.determine_ititial_trend()
+
+
+
+     ###############################################################################
+    #####    END    ################################################
+
 #calculate SMAS
 def get_sma_health(api, group_name):
     DATA_PERIOD_DAY = int((200 *(8/5)) + 10)
@@ -370,21 +450,14 @@ def get_sma_health(api, group_name):
         name.SMA_50 = sma_50
     
 
-
-
 def sma(data, length_sma , stock_name):
 
     current_sma = None
     length_data_set = len(data)
     start_index = length_data_set - length_sma
-
-    #print(length_data_set)
-    #print(start_index)
-    #print(data[26])
-    #Try to Compute SMA if enough data is available
     
-    total = 0
-    
+    #Compute SMA
+    total = 0    
     try:
         for i in range(start_index, length_data_set):
             total = total + data[i]
