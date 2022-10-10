@@ -18,6 +18,7 @@ import datetime as dt #to get date
 import pytz #to get date
 import math #rounding purposes
 import web_socket_daily_bar #Needs to be dubugged later
+import pandas as pd 
 
 #api_test = REST()
 #import alpaca_trad_api #delete
@@ -344,11 +345,40 @@ def get_Dataset_IntraDay(api, stock, DATA_PERIOD = 260, temp_timeframe = "Hour")
     #Determine IntraDay Trend bars for that timeframe
     temp_intra_BARSET = api.get_bars(stock.name, timeframe, start = start_time_hours, end = None, limit = DATA_PERIOD)
 
-    temp_intra_BARSET_PARSED = parse_closes(temp_intra_BARSET)
+    #Get rid of pre/post market data. Keep only market data during market hours between 09:30 and 16:00
+    temp_intra_BARSET_MARKET = only_market_hours(temp_intra_BARSET)
 
     #Store attribute and return dataset
-    stock.dataset = temp_intra_BARSET_PARSED
-    return temp_intra_BARSET_PARSED
+    stock.dataset = temp_intra_BARSET_MARKET
+    return temp_intra_BARSET_MARKET
+
+
+def only_market_hours(RAW_DATA):
+
+    #Print the time and the close
+    #for i in range(0, len(RAW_DATA) - 1,1):
+        #print("DATE: ", RAW_DATA[i].t, "  price: ", RAW_DATA[i].c)
+
+    #print(type(RAW_DATA))
+    #df_data = (RAW_DATA.df)
+    #new_df_data = df_data.between_time('09:30' , '16:00')
+    #print(new_df_data)
+    #temp_array = 
+
+
+    #Get rid of pre market and post-market data points and return an array of closing prices
+    df_data = (RAW_DATA.df)
+    new_df_data = df_data.between_time('09:30' , '16:00')
+
+    #Convert datatframe to array
+    parsed_array = new_df_data.loc[:]['close'].values
+    #print("/n/n/ Array: ")
+    #print(parsed_array)
+
+    #print("Size of datefram BEFORE: ", len(RAW_DATA))
+    #print("Size of datefram AFTER: ", len(parsed_array))
+
+    return parsed_array
 
 
 ################################################################################################################
@@ -357,11 +387,13 @@ def get_Dataset_IntraDay(api, stock, DATA_PERIOD = 260, temp_timeframe = "Hour")
 def skip_parse(interval = 3, data = None):
     
     parsed_data = []
-    end_index = len(data) - 1 - interval
-    num_complete_intervals = math.floor((len(data) - interval) / interval)
-    
-    for i in range(interval ,end_index, interval): #might be wrong
+
+    #Take a data point every interval length
+    for i in range(0, len(data) - 1, interval):
         parsed_data.append(data[i])
+
+    #Take final (partial/current data point if it has not been taken yet)
+    parsed_data.append(data[len(data) - 1])
 
     return parsed_data
 
@@ -411,18 +443,18 @@ def get_starting_trends(api, group):
     ###############################################################################
     #####    CONSTRUCTOIN START    ################################################
     #For each stock start by getting Weekly Data Set
-    #for stock_obj in group.stock_objects_array:
+    for stock_obj in group.stock_objects_array:
 
-        #dataset_weekly = get_Dataset_W(api, stock_obj, 100)
-        #initialize_trend_data(stock_obj, "Week", dataset_weekly)
-        #stock_obj.determine_ititial_trend()
+        dataset_weekly = get_Dataset_W(api, stock_obj, 100)
+        initialize_trend_data(stock_obj, "Week", dataset_weekly)
+        stock_obj.determine_ititial_trend()
 
     #New temp Timeframe
-    #for stock_obj in group.stock_objects_array:
-    #stock_obj = group.stock_objects_array[0]
-    #dataset_3D = get_Dataset_3D(api, stock_obj, DATA_PERIOD_DAY * 3)
-    #print("\n\n\n\n")
-    #print(dataset_3D)
+    for stock_obj in group.stock_objects_array:
+    
+        dataset_3D = get_Dataset_3D(api, stock_obj, DATA_PERIOD_DAY * 3)
+        initialize_trend_data(stock_obj, "3D", dataset_3D)
+        stock_obj.determine_ititial_trend()
 
         #initialize_trend_data(stock_obj, "1min", dataset_min)
         #stock_obj.determine_ititial_trend()

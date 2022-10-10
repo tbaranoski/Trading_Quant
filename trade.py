@@ -105,6 +105,16 @@ class Group:
         for temp_name in self.stock_objects_array:
             temp_name.print_attributes()
         
+    def print_group_trends(self):
+
+        print ('\033[1m') #Bold FONT ON
+        print("Group:", self.name_group)
+        print('{:<7} {:^30} {:^30} {:^30} {:^30} {:^30} {:^10}'.format("Name", "Trend (Weekly)", "Trend (3D)", "Trend (Daily)", "Trend (Hourly)", "Trend (Minute)","Est. Price"))
+        print ('\033[0m') #Bold FONT OFF
+
+        #Print Attributes For the Stock
+        for temp_name in self.stock_objects_array:
+            temp_name.print_trend_attributes()
 
 #Create stock class (Child Class) to store the key data that will be used in the trading strategy.
 #This will allow us to choose different strategies to use for different stocks
@@ -158,7 +168,8 @@ class Stock(Group):
         except: 
             self.EMA_SCORE = None
     
-    #Print the stock attributes
+    #######################################################################################################################
+    #Print the stock attributes (Trend, ema, strategy)
     def print_attributes(self):
 
         #Try to print attributes if populated
@@ -174,6 +185,25 @@ class Stock(Group):
 
         except Exception as Argument:
             logging.exception("Error occured printing stock attributes. (Stock Attributes may not be populated)")
+
+    #######################################################################################################################
+    ####      Just prints trend attributes    #############################################################################
+    def print_trend_attributes(self):
+
+        #Try to print attributes if populated
+        try:
+
+            if(self.strategy != None):
+                strat_print = self.strategy
+
+            else:
+                strat_print = "N/A"
+            
+            print('{:<7} {:^30} {:^30} {:^30} {:^30} {:^30} {:^10}'.format(str(self.name), str(self.trend.trend_child_Week.name), str(self.trend.trend_child_3D.name), str(self.trend.print_trend_D()), str(self.trend.trend_child_Hour.name), str(self.trend.trend_child_1min.name), str(self.current_price_estimate)))
+
+        except Exception as Argument:
+            logging.exception("Error occured printing stock attributes. (Stock Attributes may not be populated)")
+    #######################################################################################################################
 
 
     def print_trend(self):
@@ -420,10 +450,11 @@ class trend_state(Enum):
 
 class Trend(Stock):
 
-    def __init__(self, trend_child_Week = trend_state.starting_state, current_trend = trend_state.starting_state, trend_hour = trend_state.starting_state, trend_30min = trend_state.starting_state, trend_15min = trend_state.starting_state, trend_5min = trend_state.starting_state, trend_1min = trend_state.starting_state, higher_high_counter = 0, lower_low_counter = 0, higher_low_counter = 0, lower_high_counter = 0, current_timeframe_string = 'Day'):
+    def __init__(self, trend_child_Week = trend_state.starting_state, trend_child_3D = trend_state.starting_state, current_trend = trend_state.starting_state, trend_hour = trend_state.starting_state, trend_30min = trend_state.starting_state, trend_15min = trend_state.starting_state, trend_5min = trend_state.starting_state, trend_1min = trend_state.starting_state, higher_high_counter = 0, lower_low_counter = 0, higher_low_counter = 0, lower_high_counter = 0, current_timeframe_string = 'Day'):
         
         #Trend Attributes for Different TimeFrames
         self.trend_child_Week = trend_child_Week
+        self.trend_child_3D = trend_child_3D
         self.trend_child_Day = current_trend #default state if no current_trend is passed in. (Will be used 99% of time). Note: Daily timeframe
         self.trend_child_Hour = trend_hour
         self.trend_child_30min = trend_30min
@@ -478,6 +509,8 @@ class Trend(Stock):
         #Essentially case statement but case is only supported python 3.10
         if(self.current_timeframe_string == "Week"):
             last_state_temp = self.trend_child_Week
+        if(self.current_timeframe_string == "3D"):
+            last_state_temp = self.trend_child_3D
         if(self.current_timeframe_string == "Day"):
             last_state_temp = self.trend_child_Day
         if(self.current_timeframe_string == "Hour"):
@@ -496,6 +529,8 @@ class Trend(Stock):
         #Set that Timeframe State to new State
         if(self.current_timeframe_string == "Week"):
             self.trend_child_Week = new_state_temp
+        if(self.current_timeframe_string == "3D"):
+            self.trend_child_3D = new_state_temp
         if(self.current_timeframe_string == "Day"):
             self.trend_child_Day = new_state_temp
         if(self.current_timeframe_string == "Hour"):
@@ -936,9 +971,8 @@ def main():
 
     index_group = Group(ticker_list= index_names_array, name_group = "Indexes")
     tech_group = Group(ticker_list= tech_names_array, name_group = "Technology")
-    
     get_group_data(api, index_group)
-    get_group_data(api, tech_group)
+    #get_group_data(api, tech_group)
 
     #RUN STRATEGY ########################################################
     #Run a basic strategy
@@ -947,7 +981,7 @@ def main():
 
     #Print Statements to print Group Data for Desired Groups
 
-    index_group.print_group_data()
+    index_group.print_group_trends()
     #tech_group.print_group_data()
 
     ##########################

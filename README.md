@@ -456,3 +456,7 @@ welcomed.
 pip install mysql-connector
 
 ## Using Logger
+ Add info on how to use
+
+ ## Trend Class
+ Add info/picture dictating the state machine for the trend
