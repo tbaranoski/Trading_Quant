@@ -686,9 +686,20 @@ class Trend(Stock):
             elif((self.higher_high_counter == 0) and (self.higher_low_counter >= 2) and (self.lower_low_counter == 0) and (self.lower_high_counter >= 2)):
                 new_state = trend_state.volitility_contraction
 
+            #BUG_FIX (Next two elif statements)
+            elif((self.higher_high_counter >= 1) and (self.higher_low_counter >= 2) and (self.lower_low_counter == 0) and (self.lower_high_counter == 0)):
+                new_state = trend_state.possible_downtrend_reversal
+
+            elif((self.higher_high_counter == 0) and (self.higher_low_counter == 0) and (self.lower_low_counter >= 1) and (self.lower_high_counter >= 2)):
+                new_state = trend_state.possible_downtrend_reversal
+
             #Should not end up here but logic could be flawed
             else:
                 logging.error("Error: Debug State Sent from state 5")
+                print("HH:", self.higher_high_counter)
+                print("HL:", self.higher_low_counter)
+                print("LL:", self.lower_low_counter)
+                print("LH:", self.lower_high_counter)
                 #new_state = trend_state.debug
                 new_state = last_state
 
@@ -908,7 +919,7 @@ def place_trade_basic(api, group):
 ##################################################################################
 ##################################################################################
 ####    Main Fucntion to run ALGO   ####
-#def main():
+def main():
 
     ###################################################################
     #Modify the lists below...
@@ -950,4 +961,4 @@ def place_trade_basic(api, group):
 
 
 
-#main()
+main()
