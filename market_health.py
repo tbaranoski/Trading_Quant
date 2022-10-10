@@ -343,6 +343,7 @@ def get_Dataset_IntraDay(api, stock, DATA_PERIOD = 260, temp_timeframe = "Hour")
 
     #Determine IntraDay Trend bars for that timeframe
     temp_intra_BARSET = api.get_bars(stock.name, timeframe, start = start_time_hours, end = None, limit = DATA_PERIOD)
+
     temp_intra_BARSET_PARSED = parse_closes(temp_intra_BARSET)
 
     #Store attribute and return dataset
@@ -395,7 +396,7 @@ def get_starting_trends(api, group):
     #For each stock Get Hourly Timeframe
     for stock_obj in group.stock_objects_array:
 
-        dataset_hourly = get_Dataset_IntraDay(api, stock_obj, DATA_PERIOD_DAY, "Hour")
+        dataset_hourly = get_Dataset_IntraDay(api, stock_obj, DATA_PERIOD_DAY * 2.5, "Hour")
         initialize_trend_data(stock_obj, "Hour", dataset_hourly)
         stock_obj.determine_ititial_trend()
 

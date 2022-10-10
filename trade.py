@@ -255,9 +255,9 @@ class Stock(Group):
                 #Update the Trend State Machine
                 self.trend.update_state()
 
-                #logging line
-                temp_string = "Current State is: " + self.trend.trend_child_Day.name
-                logging.info(temp_string)
+                #logging line (chnage for timeframe to debug)
+                #temp_string = "Current State is: " + self.trend.trend_child_Hour.name
+                #logging.info(temp_string)
             
             elif(array[1] == None):
                 logging.info("We have reached end of dataset for computing pivots")
@@ -696,10 +696,10 @@ class Trend(Stock):
             #Should not end up here but logic could be flawed
             else:
                 logging.error("Error: Debug State Sent from state 5")
-                print("HH:", self.higher_high_counter)
-                print("HL:", self.higher_low_counter)
-                print("LL:", self.lower_low_counter)
-                print("LH:", self.lower_high_counter)
+                #print("HH:", self.higher_high_counter)
+                #print("HL:", self.higher_low_counter)
+                #print("LL:", self.lower_low_counter)
+                #print("LH:", self.lower_high_counter)
                 #new_state = trend_state.debug
                 new_state = last_state
 
@@ -923,7 +923,7 @@ def main():
 
     ###################################################################
     #Modify the lists below...
-    index_names_array = ['SPY', 'QQQ', 'IWM', 'IWO', 'DIA']
+    index_names_array = ['SPY', 'QQQ', 'DIA', 'IWM', 'IWO']
     tech_names_array = ['AAPL', 'MSFT', 'TSLA', 'ROKU']
     ###################################################################
 
@@ -948,7 +948,7 @@ def main():
     #Print Statements to print Group Data for Desired Groups
 
     index_group.print_group_data()
-    tech_group.print_group_data()
+    #tech_group.print_group_data()
 
     ##########################
     #Get Positions
