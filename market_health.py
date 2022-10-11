@@ -334,16 +334,25 @@ def get_Dataset_IntraDay(api, stock, DATA_PERIOD = 260, temp_timeframe = "Hour")
         start_time_hours = (timeNow - dt.timedelta(hours=DATA_PERIOD)).isoformat()
         timeframe = TimeFrame.Hour
 
+    elif(temp_timeframe == "30min"):
+        start_time_hours = (timeNow - dt.timedelta(hours=DATA_PERIOD)).isoformat()
+        timeframe = TimeFrame.Minute
+
     elif(temp_timeframe == "1min"):
         DATA_PERIOD = DATA_PERIOD * 3
         start_time_hours = (timeNow - dt.timedelta(hours=DATA_PERIOD / 60)).isoformat()
         timeframe = TimeFrame.Minute
     else:
-        logging.ERROR("Timeframe in get_Dataset_IntraDay() Not Recognized")
+        temp_error = "timeframe in get_Dataset_IntraDay() is: " + temp_timeframe
+        logging.error(temp_error)
+        logging.error("Timeframe in get_Dataset_IntraDay() Not Recognized")
 
 
     #Determine IntraDay Trend bars for that timeframe
-    temp_intra_BARSET = api.get_bars(stock.name, timeframe, start = start_time_hours, end = None, limit = DATA_PERIOD)
+    temp_intra_BARSET = api.get_bars(stock.name, timeframe, start = start_time_hours, end = None) #limit = DATA_PERIOD)
+
+    #If it is 30min, 15min, or 5 min parse
+    
 
     #Get rid of pre/post market data. Keep only market data during market hours between 09:30 and 16:00
     temp_intra_BARSET_MARKET = only_market_hours(temp_intra_BARSET)
@@ -428,7 +437,7 @@ def get_starting_trends(api, group):
     #For each stock Get Hourly Timeframe
     for stock_obj in group.stock_objects_array:
 
-        dataset_hourly = get_Dataset_IntraDay(api, stock_obj, DATA_PERIOD_DAY * 2.5, "Hour")
+        dataset_hourly = get_Dataset_IntraDay(api, stock_obj, DATA_PERIOD_DAY * 3, "Hour")
         initialize_trend_data(stock_obj, "Hour", dataset_hourly)
         stock_obj.determine_ititial_trend()
 
@@ -449,15 +458,20 @@ def get_starting_trends(api, group):
         initialize_trend_data(stock_obj, "Week", dataset_weekly)
         stock_obj.determine_ititial_trend()
 
-    #New temp Timeframe
+    #3D  Datatset
     for stock_obj in group.stock_objects_array:
     
         dataset_3D = get_Dataset_3D(api, stock_obj, DATA_PERIOD_DAY * 3)
         initialize_trend_data(stock_obj, "3D", dataset_3D)
         stock_obj.determine_ititial_trend()
 
-        #initialize_trend_data(stock_obj, "1min", dataset_min)
+    for stock_obj in group.stock_objects_array:
+
+        dataset_30min = get_Dataset_IntraDay(api, stock_obj, DATA_PERIOD_DAY * 3, "30min")
+        #initialize_trend_data(stock_obj, "30min", dataset_30min)
         #stock_obj.determine_ititial_trend()
+
+       
 
 
 
