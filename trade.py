@@ -109,7 +109,7 @@ class Group:
 
         print ('\033[1m') #Bold FONT ON
         print("Group:", self.name_group)
-        print('{:<7} {:^30} {:^30} {:^30} {:^30} {:^30} {:^10}'.format("Name", "Trend (Weekly)", "Trend (3D)", "Trend (Daily)", "Trend (Hourly)", "Trend (Minute)","Est. Price"))
+        print('{:<7} {:^30} {:^30} {:^30} {:^30} {:^30} {:^30} {:^30} {:^30} {:^10}'.format("Name", "Trend (Weekly)", "Trend (3D)", "Trend (Daily)", "Trend (Hourly)", "Trend (30M)", "Trend (15M)", "Trend (5M)","Trend (Minute)","Est. Price"))
         print ('\033[0m') #Bold FONT OFF
 
         #Print Attributes For the Stock
@@ -199,7 +199,7 @@ class Stock(Group):
             else:
                 strat_print = "N/A"
             
-            print('{:<7} {:^30} {:^30} {:^30} {:^30} {:^30} {:^10}'.format(str(self.name), str(self.trend.trend_child_Week.name), str(self.trend.trend_child_3D.name), str(self.trend.print_trend_D()), str(self.trend.trend_child_Hour.name), str(self.trend.trend_child_1min.name), str(self.current_price_estimate)))
+            print('{:<7} {:^30} {:^30} {:^30} {:^30} {:^30} {:^30} {:^30} {:^30} {:^10}'.format(str(self.name), str(self.trend.trend_child_Week.name), str(self.trend.trend_child_3D.name), str(self.trend.print_trend_D()), str(self.trend.trend_child_Hour.name), str(self.trend.trend_child_30min.name), str(self.trend.trend_child_15min.name),str(self.trend.trend_child_5min.name) ,str(self.trend.trend_child_1min.name), str(self.current_price_estimate)))
 
         except Exception as Argument:
             logging.exception("Error occured printing stock attributes. (Stock Attributes may not be populated)")
@@ -219,7 +219,7 @@ class Stock(Group):
 
         #If market is not open and we don't have minute data or other timeframes print error
         if(len(self.dataset) == 0):
-            temp_log = "Trend on Minute Timeframe for " + self.name + " could not be computed because market NOT OPEN (NOT ENOUGH MINUTE DATA)"
+            temp_log = "Trend on some Timeframe for " + self.name + " could not be computed because market NOT OPEN (NOT ENOUGH MINUTE DATA)"
             logging.error(temp_log)
 
         ############################################################################################################################
@@ -954,7 +954,7 @@ def place_trade_basic(api, group):
 ##################################################################################
 ##################################################################################
 ####    Main Fucntion to run ALGO   ####
-#def main():
+def main():
 
     ###################################################################
     #Modify the lists below...
@@ -995,4 +995,4 @@ def place_trade_basic(api, group):
 
 
 
-#main()
+main()

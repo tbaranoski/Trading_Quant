@@ -337,10 +337,18 @@ def get_Dataset_IntraDay(api, stock, DATA_PERIOD = 260, temp_timeframe = "Hour")
     elif(temp_timeframe == "30min"):
         start_time_hours = (timeNow - dt.timedelta(hours=DATA_PERIOD)).isoformat()
         timeframe = TimeFrame.Minute
+    
+    elif(temp_timeframe == "15min"):
+        start_time_hours = (timeNow - dt.timedelta(hours= (DATA_PERIOD / 2))).isoformat()
+        timeframe = TimeFrame.Minute
+
+    elif(temp_timeframe == "5min"):
+        start_time_hours = (timeNow - dt.timedelta(hours= (DATA_PERIOD / 4))).isoformat()
+        timeframe = TimeFrame.Minute
 
     elif(temp_timeframe == "1min"):
-        DATA_PERIOD = DATA_PERIOD * 3
-        start_time_hours = (timeNow - dt.timedelta(hours=DATA_PERIOD / 60)).isoformat()
+        DATA_PERIOD = DATA_PERIOD
+        start_time_hours = (timeNow - dt.timedelta(hours=(DATA_PERIOD / 60))).isoformat()
         timeframe = TimeFrame.Minute
     else:
         temp_error = "timeframe in get_Dataset_IntraDay() is: " + temp_timeframe
@@ -351,41 +359,65 @@ def get_Dataset_IntraDay(api, stock, DATA_PERIOD = 260, temp_timeframe = "Hour")
     #Determine IntraDay Trend bars for that timeframe
     temp_intra_BARSET = api.get_bars(stock.name, timeframe, start = start_time_hours, end = None) #limit = DATA_PERIOD)
 
-    #If it is 30min, 15min, or 5 min parse
-    
+    temp_intra_BARSET_MARKET = [] #declare variable
 
-    #Get rid of pre/post market data. Keep only market data during market hours between 09:30 and 16:00
-    temp_intra_BARSET_MARKET = only_market_hours(temp_intra_BARSET)
+    #Get rid of pre/post market data. Keep only market data during market hours between 09:30 and 16:00. 
+    #Combine minute candles for 30min, 15 min, and 5 min
+    if(temp_timeframe == "Hour" or temp_timeframe == "30min" or temp_timeframe == "15min" or temp_timeframe == "5min"):
+        temp_intra_BARSET_MARKET = only_market_hours(temp_intra_BARSET, timeframe = temp_timeframe)
+    
+    elif(temp_timeframe == "1min"):
+        #parse closes
+        temp_intra_BARSET_MARKET = parse_closes(temp_intra_BARSET)
+    
+    else:
+        logging.error("ERROR with timeframe in get_Dataset_IntraDay")
 
     #Store attribute and return dataset
     stock.dataset = temp_intra_BARSET_MARKET
     return temp_intra_BARSET_MARKET
 
+###################################################################################################################
+###################################################################################################################
+#Removes pre/post market data leaving only market data.
+#In addition if the timeframe is 5min, 15 min, or 30min combine the 1 min candles to form larger timeframe candle
+def only_market_hours(RAW_DATA, timeframe):
 
-def only_market_hours(RAW_DATA):
-
-    #Print the time and the close
-    #for i in range(0, len(RAW_DATA) - 1,1):
-        #print("DATE: ", RAW_DATA[i].t, "  price: ", RAW_DATA[i].c)
-
-    #print(type(RAW_DATA))
-    #df_data = (RAW_DATA.df)
-    #new_df_data = df_data.between_time('09:30' , '16:00')
-    #print(new_df_data)
-    #temp_array = 
-
-
+    parsed_array = []
     #Get rid of pre market and post-market data points and return an array of closing prices
     df_data = (RAW_DATA.df)
     new_df_data = df_data.between_time('09:30' , '16:00')
 
     #Convert datatframe to array
-    parsed_array = new_df_data.loc[:]['close'].values
-    #print("/n/n/ Array: ")
-    #print(parsed_array)
+    #If timeframe is Hour go from dataframe -> Array
+    if(timeframe == "Hour"):
+        parsed_array = new_df_data.loc[:]['close'].values
 
-    #print("Size of datefram BEFORE: ", len(RAW_DATA))
-    #print("Size of datefram AFTER: ", len(parsed_array))
+    #If timeframe is 30min use for loop to pull 30 min closes
+    elif(timeframe == "30min"):
+
+        parsed_array = new_df_data.iloc[::30, :]['close'].values
+        
+         
+        #Get rid of 0th index, and append current price to end
+        #parsed_array.pop(0)
+        #parsed_array.append(RAW_DATA[len(RAW_DATA) - 1].c)    
+        #print(parsed_array)
+        #print("type is:", type(parsed_array))
+
+    #If timeframe is 15min use for loop to pull 30 min closes
+    #elif(timeframe == "15min"):
+        #for i in range(15 - 1, len(new_df_data.columns) - 1, 15):
+            #parsed_array = new_df_data.loc[i]['close'].values
+
+    #If timeframe is 15min use for loop to pull 30 min closes
+    #elif(timeframe == "5min"):
+        #for i in range(5 - 1, len(new_df_data.columns) - 1, 5):
+            #parsed_array = new_df_data.loc[i]['close'].values
+
+    #else:
+        #error_string = "Timeframe not recognized in only_market_hours() in markethealth.py. Timeframe is: " + timeframe
+        #logging.error(error_string)
 
     return parsed_array
 
@@ -445,7 +477,7 @@ def get_starting_trends(api, group):
     #For each stock Get Minute Timeframe
     for stock_obj in group.stock_objects_array:
 
-        dataset_min = get_Dataset_IntraDay(api, stock_obj, DATA_PERIOD_DAY, "1min")
+        dataset_min = get_Dataset_IntraDay(api, stock_obj, DATA_PERIOD_DAY * 3, "1min")
         initialize_trend_data(stock_obj, "1min", dataset_min)
         stock_obj.determine_ititial_trend()
 
@@ -458,22 +490,36 @@ def get_starting_trends(api, group):
         initialize_trend_data(stock_obj, "Week", dataset_weekly)
         stock_obj.determine_ititial_trend()
 
-    #3D  Datatset
+    #3D Datatset
     for stock_obj in group.stock_objects_array:
     
         dataset_3D = get_Dataset_3D(api, stock_obj, DATA_PERIOD_DAY * 3)
         initialize_trend_data(stock_obj, "3D", dataset_3D)
         stock_obj.determine_ititial_trend()
 
+    #30 Min Datatset
     for stock_obj in group.stock_objects_array:
 
-        dataset_30min = get_Dataset_IntraDay(api, stock_obj, DATA_PERIOD_DAY * 3, "30min")
-        #initialize_trend_data(stock_obj, "30min", dataset_30min)
+        dataset_30min = get_Dataset_IntraDay(api, stock_obj, 1000, "30min")
+
+        print("!!!!@@@@: size of arrray is", len(dataset_30min))
+
+        initialize_trend_data(stock_obj, "30min", dataset_30min)
+        stock_obj.determine_ititial_trend()
+
+    #15 Min Datatset
+    #for stock_obj in group.stock_objects_array:
+
+        #dataset_15min = get_Dataset_IntraDay(api, stock_obj, 1400, "15min")
+        #initialize_trend_data(stock_obj, "15min", dataset_15min)
         #stock_obj.determine_ititial_trend()
 
-       
+    #5 Min Datatset
+    #for stock_obj in group.stock_objects_array:
 
-
+        #dataset_5min = get_Dataset_IntraDay(api, stock_obj, 1400, "5min")
+        #initialize_trend_data(stock_obj, "5min", dataset_5min)
+        #stock_obj.determine_ititial_trend()
 
      ###############################################################################
     #####    END    ################################################

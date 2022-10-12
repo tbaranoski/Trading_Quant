@@ -32,7 +32,9 @@ def print_chart(dataset = None, timeframe = None):
     else:
         print(" ")
 
-
+#Used for populating data for testing
+def create_artifical_state_array(size):
+    array = [3] * len(DAILY_SPY_CANDLES)
 
 
 ##################################################################################################
@@ -54,10 +56,11 @@ def main():
     HOURLY_SPY_CANDLES = api.get_bars(SPY_STOCK_OBJECT.name, TimeFrame.Hour, start = start_time_hour.isoformat(), end = None)
 
     #Make Artificial Array with States
-    state_array_Daily = [7] * len(DAILY_SPY_CANDLES)
-    state_array_Hourly = [7] * len(HOURLY_SPY_CANDLES)
+    create_artifical_state_array(len(DAILY_SPY_CANDLES))
+    #state_array_Daily = [7] * len(DAILY_SPY_CANDLES)
+    #state_array_Hourly = [7] * len(HOURLY_SPY_CANDLES)
     
-    print(state_array_Daily)
+    #print(state_array_Daily)
 
     #Test 1 : Daily Timeframe
     #print("Test 1...\n\n")
